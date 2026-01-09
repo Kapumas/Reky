@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { TIME_SLOTS } from '../constants';
 
 export const bookingFormSchema = z.object({
   apartmentNumber: z
@@ -15,8 +14,9 @@ export const bookingFormSchema = z.object({
   vehiclePlate: z
     .string()
     .min(1, 'La placa del vehículo es requerida')
-    .max(6, 'La placa debe tener máximo 6 caracteres')
-    .regex(/^[A-Z0-9]+$/, 'La placa solo puede contener letras mayúsculas y números'),
+    .max(7, 'La placa debe tener máximo 7 caracteres')
+    .regex(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/, 'La placa debe tener el formato ABC-123')
+    .transform((val) => val.replace(/-/g, '')),
   date: z
     .string()
     .min(1, 'La fecha es requerida')

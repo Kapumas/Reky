@@ -64,9 +64,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating booking:', error);
 
-    if (error instanceof Error && error.message.includes('already booked')) {
+    if (error instanceof Error && error.message.includes('ya está reservado')) {
       return NextResponse.json(
-        { error: 'Este horario ya está reservado. Por favor selecciona otro horario.' },
+        { error: error.message },
         { status: 409 }
       );
     }
