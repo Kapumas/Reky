@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatDateForInput, formatDateWithDayName, formatTimeToAMPM } from '@/lib/utils/dateTime';
+import { formatDateForInput, formatDateWithDayName, formatTimeToAMPM, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
 
 interface SimplifiedBookingFormProps {
   preSelectedDate?: Date;
@@ -18,7 +18,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     preSelectedDate ? formatDateForInput(preSelectedDate) : ''
   );
   const [hora, setHora] = useState('');
-  const [duracion, setDuracion] = useState(2); // Default 2 hours
+  const [duracion, setDuracion] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoadingUser, setIsLoadingUser] = useState(false);
@@ -75,9 +75,21 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     return (startHour + hours) >= 24;
   };
 
-  const horaFinal = hora ? calculateEndTime(hora, duracion) : '';
-  const crossesNextDay = hora ? isNextDay(hora, duracion) : false;
+  const horaFinal = hora && duracion ? calculateEndTime(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : '';
+  const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : false;
   const maxDuracion = 8; // Always 8 hours max
+
+  // Format vehicle plate with mask ABC-123
+  const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); // Remove non-alphanumeric
+    
+    // Add hyphen after 3 characters
+    if (value.length > 3) {
+      value = value.slice(0, 3) + '-' + value.slice(3, 6);
+    }
+    
+    setPlaca(value);
+  };
 
   // Auto-fill user data when apartment number is valid
   useEffect(() => {
@@ -117,6 +129,25 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage('');
+
+    // Validate duration is provided and doesn't exceed 8 hours
+    if (duracion === '' || !duracion) {
+      setErrorMessage('Por favor ingresa la duración de la reserva');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (duracion > 8) {
+      setErrorMessage('La duración máxima es de 8 horas');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (duracion < 1) {
+      setErrorMessage('La duración mínima es de 1 hora');
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/bookings/create', {
@@ -176,6 +207,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         </label>
         <input
           type="text"
+          inputMode="numeric"
           value={torre}
           onChange={(e) => {
             let value = e.target.value;
@@ -257,10 +289,10 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         <input
           type="text"
           value={placa}
-          onChange={(e) => setPlaca(e.target.value.toUpperCase())}
-          placeholder="ABC123"
+          onChange={handlePlacaChange}
+          placeholder="ABC-123"
           required
-          maxLength={6}
+          maxLength={7}
           className="w-full px-4 py-3 rounded-xl transition-colors"
           style={{
             border: '1px solid #E5E7EB',
@@ -271,7 +303,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           }}
         />
         <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
-          {userFound && placa ? 'Placa de tu última reserva (puedes modificarla)' : 'Ingresa la placa sin espacios ni guiones'}
+          {userFound && placa ? 'Placa de tu última reserva (puedes modificarla)' : 'Formato: ABC-123'}
         </p>
       </div>
 
@@ -356,13 +388,19 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
                 +2h
               </button>
               <input
-                type="number"
-                min="1"
-                max={maxDuracion}
+                type="text"
+                inputMode="numeric"
                 value={duracion}
                 onChange={(e) => {
-                  const value = parseInt(e.target.value) || 1;
-                  setDuracion(Math.min(Math.max(value, 1), maxDuracion));
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  if (value === '') {
+                    setDuracion('');
+                  } else {
+                    const numValue = parseInt(value);
+                    if (numValue <= maxDuracion) {
+                      setDuracion(numValue);
+                    }
+                  }
                 }}
                 className="py-3 px-4 rounded-xl text-center font-medium transition-colors"
                 style={{
@@ -384,7 +422,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         {fecha && hora && horaFinal && (
           <div className="mt-4 p-4 rounded-xl" style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}>
             <p className="font-medium mb-1" style={{ fontSize: '14px', color: '#1F2933' }}>
-              {formatDateWithDayName(new Date(fecha))}
+              {formatDateWithDayName(parseDateInBogotaTimezone(fecha))}
             </p>
             <p style={{ fontSize: '16px', color: '#2F9E44', fontWeight: '600' }}>
               {formatTimeToAMPM(hora)} - {formatTimeToAMPM(horaFinal)}

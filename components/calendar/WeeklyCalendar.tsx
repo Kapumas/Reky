@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatDateForInput } from '@/lib/utils/dateTime';
 
 interface WeeklyCalendarProps {
   onDateSelect?: (date: Date) => void;
@@ -11,10 +12,36 @@ interface WeeklyCalendarProps {
 interface DayAvailability {
   date: Date;
   isAvailable: boolean;
+  hasBookings: boolean;
+}
+
+interface Booking {
+  id: string;
+  bookingDate: string;
 }
 
 export function WeeklyCalendar({ onDateSelect }: WeeklyCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch upcoming bookings
+  useEffect(() => {
+    async function fetchBookings() {
+      try {
+        const response = await fetch('/api/bookings/upcoming');
+        if (response.ok) {
+          const data = await response.json();
+          setBookings(data.bookings || []);
+        }
+      } catch (error) {
+        console.error('Error fetching bookings:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBookings();
+  }, []);
 
   // Generate days: 2 previous days + today + 13 future days (16 total)
   const allDays = useMemo(() => {
@@ -23,13 +50,24 @@ export function WeeklyCalendar({ onDateSelect }: WeeklyCalendarProps) {
     // Start from 2 days ago
     for (let i = -2; i < 14; i++) {
       const date = addDays(today, i);
+      const dateString = formatDateForInput(date);
+      
+      // Check if this date has any bookings
+      // Convert ISO date to YYYY-MM-DD for comparison
+      const hasBookings = bookings.some(booking => {
+        const bookingDate = new Date(booking.bookingDate);
+        const bookingDateString = formatDateForInput(bookingDate);
+        return bookingDateString === dateString;
+      });
+      
       days.push({
         date,
-        isAvailable: i % 3 !== 0, // Mock availability
+        isAvailable: !hasBookings, // Available if no bookings
+        hasBookings,
       });
     }
     return days;
-  }, []);
+  }, [bookings]);
 
   const handleDateClick = (day: DayAvailability) => {
     setSelectedDate(day.date);
@@ -92,16 +130,18 @@ export function WeeklyCalendar({ onDateSelect }: WeeklyCalendarProps) {
                 >
                   {format(day.date, 'd')}
                 </span>
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{
-                    backgroundColor: day.isAvailable
-                      ? isSelected
+                {!loading && (
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      backgroundColor: day.hasBookings
+                        ? '#E5E7EB' // Gris si hay reservas (ocupado)
+                        : isSelected
                         ? 'white'
-                        : '#2F9E44'
-                      : '#E5E7EB',
-                  }}
-                />
+                        : '#2F9E44', // Verde si está disponible
+                    }}
+                  />
+                )}
               </button>
             );
           })}
@@ -128,7 +168,7 @@ export function WeeklyCalendar({ onDateSelect }: WeeklyCalendarProps) {
             className="w-3 h-3 rounded-full"
             style={{ backgroundColor: '#E5E7EB' }}
           />
-          <span style={{ fontSize: '14px', color: '#6B7280' }}>Ocupado</span>
+          <span style={{ fontSize: '14px', color: '#6B7280' }}>Con reservas</span>
         </div>
       </div>
     </div>

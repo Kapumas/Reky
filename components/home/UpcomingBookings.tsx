@@ -137,7 +137,7 @@ export function UpcomingBookings() {
                   {booking.fullName}
                   {booking.vehiclePlate && booking.vehiclePlate.trim() !== '' && (
                     <span style={{ marginLeft: '8px' }}>
-                      - Placa [{booking.vehiclePlate.slice(-3)}]
+                      - Placa {booking.vehiclePlate}
                     </span>
                   )}
                 </p>

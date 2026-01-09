@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { formatDateForDisplay, formatTimeSlotForDisplay } from '@/lib/utils/dateTime';
+import { formatDateForDisplay, formatTimeSlotForDisplay, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
 import { CheckCircle, Calendar, Clock, Home, User } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -45,7 +45,7 @@ function ConfirmationContent() {
     );
   }
 
-  const bookingDate = new Date(date);
+  const bookingDate = parseDateInBogotaTimezone(date);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F6F8F7' }}>
@@ -124,7 +124,7 @@ function ConfirmationContent() {
           </Link>
           <Link href="/">
             <button
-              className="w-full rounded-xl font-semibold transition-all"
+              className="w-full mt-4 rounded-xl font-semibold transition-all"
               style={{
                 backgroundColor: '#2F9E44',
                 color: 'white',
