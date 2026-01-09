@@ -117,7 +117,10 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         setNombre(data.user.fullName);
         // Auto-fill vehicle plate if available from last booking
         if (data.user.vehiclePlate && data.user.vehiclePlate.trim() !== '') {
-          setPlaca(data.user.vehiclePlate);
+          // Format plate with hyphen (ABC123 -> ABC-123)
+          const plate = data.user.vehiclePlate;
+          const formattedPlate = plate.length === 6 ? `${plate.slice(0, 3)}-${plate.slice(3)}` : plate;
+          setPlaca(formattedPlate);
         }
         setUserFound(true);
       } else {
@@ -178,6 +181,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           confirmationCode: result.confirmationCode,
           apartment: torre,
           name: nombre,
+          vehiclePlate: placa,
           date: fecha,
           timeSlot: `${hora}-${parseInt(hora.split(':')[0]) + 2}:00`,
         });

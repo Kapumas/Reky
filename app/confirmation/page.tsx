@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { formatDateForDisplay, formatTimeSlotForDisplay, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
-import { CheckCircle, Calendar, Clock, Home, User } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, Home, User, Car } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +13,7 @@ function ConfirmationContent() {
 
   const apartment = searchParams.get('apartment');
   const name = searchParams.get('name');
+  const vehiclePlate = searchParams.get('vehiclePlate');
   const date = searchParams.get('date');
   const timeSlot = searchParams.get('timeSlot');
 
@@ -104,6 +105,18 @@ function ConfirmationContent() {
                 </p>
               </div>
             </div>
+
+            {vehiclePlate && vehiclePlate.trim() !== '' && (
+              <div className="flex items-start gap-3">
+                <Car className="h-5 w-5 mt-0.5" style={{ color: '#6B7280' }} />
+                <div>
+                  <p style={{ fontSize: '14px', color: '#6B7280' }}>Placa del Vehículo</p>
+                  <p className="font-medium" style={{ color: '#1F2933' }}>
+                    {vehiclePlate}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
