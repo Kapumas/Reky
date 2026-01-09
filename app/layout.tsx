@@ -14,7 +14,20 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: `${APP_NAME} - Reservas de Carga para Vehículos Eléctricos`,
-  description: "Reserva tu cita de carga para vehículo eléctrico en tu edificio residencial",
+  description: "Sistema de reservas de carga para vehículos eléctricos en edificios residenciales. Agenda tu turno de forma rápida y sencilla, gestiona tus reservas y optimiza el uso de los puntos de carga compartidos.",
+  keywords: ["carga vehículos eléctricos", "reservas carga", "edificio residencial", "punto de carga", "vehículo eléctrico", "EV charging"],
+  authors: [{ name: APP_NAME }],
+  openGraph: {
+    title: `${APP_NAME} - Reservas de Carga para Vehículos Eléctricos`,
+    description: "Sistema de reservas de carga para vehículos eléctricos en edificios residenciales. Agenda tu turno de forma rápida y sencilla.",
+    type: "website",
+    locale: "es_CO",
+  },
+  twitter: {
+    card: "summary",
+    title: `${APP_NAME} - Reservas de Carga para Vehículos Eléctricos`,
+    description: "Sistema de reservas de carga para vehículos eléctricos en edificios residenciales.",
+  },
 };
 
 export const viewport = {

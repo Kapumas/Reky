@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Calendar, Settings } from 'lucide-react';
 import { APP_NAME } from '@/lib/constants';
 import { ManageBookingsModal } from '@/components/manage/ManageBookingsModal';
+import { BoltIcon } from '@/components/ui/BoltIcon';
 
 export function Header() {
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -15,7 +16,8 @@ export function Header() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <Link href="/" className="font-semibold" style={{ fontSize: '20px', color: '#1F2933' }}>
+              <Link href="/" className="font-semibold flex items-center gap-2" style={{ fontSize: '20px', color: '#1F2933' }}>
+                <BoltIcon size={24} />
                 {APP_NAME}
               </Link>
               <span style={{ color: '#6B7280', fontSize: '14px' }} className="hidden sm:inline">
