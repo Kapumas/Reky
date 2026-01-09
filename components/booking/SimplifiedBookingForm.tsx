@@ -91,15 +91,20 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     setPlaca(value);
   };
 
-  // Auto-fill user data when apartment number is valid
+  // Auto-fill user data when apartment number is valid (with debounce)
   useEffect(() => {
     const apartmentRegex = /^\d+-\d+$/;
     
-    if (apartmentRegex.test(torre)) {
-      fetchUserData(torre);
-    } else {
-      setUserFound(false);
-    }
+    // Debounce timer
+    const timer = setTimeout(() => {
+      if (apartmentRegex.test(torre)) {
+        fetchUserData(torre);
+      } else {
+        setUserFound(false);
+      }
+    }, 500); // 500ms debounce
+    
+    return () => clearTimeout(timer);
   }, [torre]);
 
   async function fetchUserData(apartmentNumber: string) {
@@ -189,15 +194,6 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {errorMessage && (
-        <div 
-          className="p-4 rounded-xl" 
-          style={{ backgroundColor: '#FEE2E2', color: '#991B1B', fontSize: '14px' }}
-        >
-          {errorMessage}
-        </div>
-      )}
-
       <div>
         <label 
           className="block mb-2 font-medium" 
@@ -215,8 +211,8 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             // Only allow numbers and hyphen
             value = value.replace(/[^0-9-]/g, '');
             
-            // Auto-add hyphen after first digit
-            if (value.length === 1 && /^\d$/.test(value)) {
+            // Auto-add hyphen after first digit only if user is typing (not deleting)
+            if (value.length === 1 && /^\d$/.test(value) && value.length > torre.length) {
               value = value + '-';
             }
             
@@ -438,6 +434,15 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           </div>
         )}
       </div>
+
+      {errorMessage && (
+        <div 
+          className="p-4 rounded-xl" 
+          style={{ backgroundColor: '#FEE2E2', color: '#991B1B', fontSize: '14px' }}
+        >
+          {errorMessage}
+        </div>
+      )}
 
       <button
         type="submit"

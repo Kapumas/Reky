@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, Clock } from 'lucide-react';
 import { formatTimeSlotForDisplay } from '@/lib/utils/dateTime';
+import { BookingDetailModal } from './BookingDetailModal';
 
 interface Booking {
   id: string;
@@ -17,6 +18,7 @@ interface Booking {
 export function UpcomingBookings() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     fetchUpcomingBookings();
@@ -111,7 +113,8 @@ export function UpcomingBookings() {
           return (
             <div
               key={booking.id}
-              className="flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-gray-50"
+              onClick={() => setSelectedBooking(booking)}
+              className="flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-gray-50 cursor-pointer"
               style={{ border: '1px solid #E5E7EB' }}
             >
               <div
@@ -146,6 +149,11 @@ export function UpcomingBookings() {
           );
         })}
       </div>
+
+      <BookingDetailModal
+        booking={selectedBooking}
+        onClose={() => setSelectedBooking(null)}
+      />
     </div>
   );
 }
