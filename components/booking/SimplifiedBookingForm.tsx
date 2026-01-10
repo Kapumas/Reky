@@ -226,9 +226,9 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
               value = value.replace(/-/g, (match, offset) => offset === value.indexOf('-') ? '-' : '');
             }
             
-            // Limit format to X-XXX (max 5 characters)
-            if (value.length > 5) {
-              value = value.slice(0, 5);
+            // Limit format to X-XXX (max 10 characters)
+            if (value.length > 10) {
+              value = value.slice(0, 10);
             }
             
             setTorre(value);
