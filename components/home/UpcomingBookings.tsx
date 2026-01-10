@@ -13,6 +13,7 @@ interface Booking {
   timeSlot: string;
   bookingDate: string;
   startTime: string;
+  endTime: string;
 }
 
 export function UpcomingBookings() {
@@ -82,6 +83,15 @@ export function UpcomingBookings() {
         {bookings.map((booking) => {
           const bookingDate = new Date(booking.startTime);
           
+          // Check if booking extends to next day by parsing timeSlot
+          // timeSlot format is "HH:MM-HH:MM" (e.g., "20:00-09:00")
+          const [startTimeStr, endTimeStr] = booking.timeSlot.split('-');
+          const [startHour] = startTimeStr.split(':').map(Number);
+          const [endHour] = endTimeStr.split(':').map(Number);
+          
+          // If end hour is less than start hour, it means it crosses to next day
+          const extendsToNextDay = endHour < startHour;
+          
           // Calculate if it's today or tomorrow
           const now = new Date();
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -98,16 +108,16 @@ export function UpcomingBookings() {
           } else if (isTomorrow) {
             dateLabel = 'Mañana';
           } else {
-            // Format date as "Viernes, 9 de Enero del 2026"
+            // Format date as "Lunes, 12/Ene/26"
             const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            const monthNamesShort = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
             
             const dayName = dayNames[bookingDate.getDay()];
             const day = bookingDate.getDate();
-            const monthName = monthNames[bookingDate.getMonth()];
-            const year = bookingDate.getFullYear();
+            const monthName = monthNamesShort[bookingDate.getMonth()];
+            // const year = bookingDate.getFullYear().toString().slice(-2); // Last 2 digits of year
             
-            dateLabel = `${dayName}, ${day} de ${monthName} del ${year}`;
+            dateLabel = `${dayName}, ${day} de ${monthName}`;
           }
 
           return (
@@ -125,13 +135,26 @@ export function UpcomingBookings() {
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="mb-1">
+                <div className="mb-1 flex items-center gap-2">
                   <span
                     className="font-semibold"
                     style={{ fontSize: '14px', color: '#1F2933' }}
                   >
                     {dateLabel}
                   </span>
+                  {extendsToNextDay && (
+                    <span
+                      className="px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: '#DBEAFE',
+                        color: '#1E40AF',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      +1 día
+                    </span>
+                  )}
                 </div>
                 <p className="font-medium mb-1" style={{ fontSize: '15px', color: '#2F9E44' }}>
                   {formatTimeSlotForDisplay(booking.timeSlot)}
