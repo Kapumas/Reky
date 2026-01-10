@@ -139,7 +139,7 @@ export function DayBookingsModal({ isOpen, onClose, selectedDate, onNewBooking }
                             {booking.fullName}
                           </p>
                           <p style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                            Apto {booking.apartmentNumber} • 🚗 {booking.vehiclePlate}
+                            🚗 {booking.vehiclePlate}
                           </p>
                         </div>
                       </div>

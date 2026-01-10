@@ -33,6 +33,7 @@ export async function GET(
       id: booking.id,
       apartmentNumber: booking.apartmentNumber,
       fullName: booking.fullName,
+      vehiclePlate: booking.vehiclePlate || '',
       timeSlot: booking.timeSlot,
       status: booking.status,
       bookingDate: booking.bookingDate.toDate().toISOString(),
