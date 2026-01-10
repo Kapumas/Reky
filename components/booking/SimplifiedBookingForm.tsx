@@ -77,7 +77,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
 
   const horaFinal = hora && duracion ? calculateEndTime(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : '';
   const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : false;
-  const maxDuracion = 8; // Always 8 hours max
+  const maxDuracion = 24; // Always 24 hours max
 
   // Format vehicle plate with mask ABC-123
   const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,8 +145,8 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
       return;
     }
     
-    if (duracion > 8) {
-      setErrorMessage('La duración máxima es de 8 horas');
+    if (duracion > 24) {
+      setErrorMessage('La duración máxima es de 24 horas');
       setIsSubmitting(false);
       return;
     }
@@ -360,7 +360,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             >
               Duración
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => setDuracion(1)}
@@ -386,6 +386,19 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
                 }}
               >
                 +2h
+              </button>
+              <button
+                type="button"
+                onClick={() => setDuracion(12)}
+                className="py-3 rounded-xl font-medium transition-all"
+                style={{
+                  backgroundColor: duracion === 12 ? '#2F9E44' : 'white',
+                  color: duracion === 12 ? 'white' : '#1F2933',
+                  border: `1px solid ${duracion === 12 ? '#2F9E44' : '#E5E7EB'}`,
+                  fontSize: '14px',
+                }}
+              >
+                +12h
               </button>
               <input
                 type="text"
