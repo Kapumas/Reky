@@ -5,6 +5,10 @@ import { format, addDays, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatDateForInput } from '@/lib/utils/dateTime';
 
+// Calendar display configuration
+const DAYS_BEFORE = 2; // Number of days to show before today
+const DAYS_AFTER = 15; // Number of days to show after today
+
 interface WeeklyCalendarProps {
   onDateSelect?: (date: Date) => void;
 }
@@ -24,16 +28,34 @@ export function WeeklyCalendar({ onDateSelect }: WeeklyCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Calculate total days to display
+  const TOTAL_DAYS = DAYS_BEFORE + 1 + DAYS_AFTER; // before + today + after
+  const VISIBLE_DAYS = Math.min(TOTAL_DAYS, 7); // Max 7 days visible at once
 
-  // Fetch upcoming bookings
+  // Fetch bookings for current and next month (to cover the full date range)
   useEffect(() => {
     async function fetchBookings() {
       try {
-        const response = await fetch('/api/bookings/upcoming');
-        if (response.ok) {
-          const data = await response.json();
-          setBookings(data.bookings || []);
+        const today = new Date();
+        const endDate = addDays(today, DAYS_AFTER); // Last day shown in calendar
+        
+        // Get unique months to fetch
+        const months = new Set<string>();
+        months.add(format(today, 'yyyy-MM'));
+        months.add(format(endDate, 'yyyy-MM'));
+        
+        // Fetch bookings for all relevant months
+        const allBookings: Booking[] = [];
+        for (const monthStr of months) {
+          const response = await fetch(`/api/bookings/calendar?month=${monthStr}`);
+          if (response.ok) {
+            const data = await response.json();
+            allBookings.push(...(data.bookings || []));
+          }
         }
+        
+        setBookings(allBookings);
       } catch (error) {
         console.error('Error fetching bookings:', error);
       } finally {
@@ -43,12 +65,12 @@ export function WeeklyCalendar({ onDateSelect }: WeeklyCalendarProps) {
     fetchBookings();
   }, []);
 
-  // Generate days: 2 previous days + today + 13 future days (16 total)
+  // Generate days based on configuration
   const allDays = useMemo(() => {
     const days: DayAvailability[] = [];
     const today = new Date();
-    // Start from 2 days ago
-    for (let i = -2; i < 14; i++) {
+    // Start from DAYS_BEFORE days ago
+    for (let i = -DAYS_BEFORE; i <= DAYS_AFTER; i++) {
       const date = addDays(today, i);
       const dateString = formatDateForInput(date);
       
@@ -100,7 +122,7 @@ export function WeeklyCalendar({ onDateSelect }: WeeklyCalendarProps) {
                   backgroundColor: isSelected ? '#2F9E44' : 'white',
                   border: `1px solid ${isToday ? '#2F9E44' : '#E5E7EB'}`,
                   minHeight: '65px',
-                  width: 'calc((100% - 12px) / 7)', // 7 items visible with 6 gaps of 2px
+                  width: `calc((100% - ${(VISIBLE_DAYS - 1) * 8}px) / ${VISIBLE_DAYS})`, // Dynamic width based on visible days
                   minWidth: '45px',
                   maxWidth: '60px',
                 }}

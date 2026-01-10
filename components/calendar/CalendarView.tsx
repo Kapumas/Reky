@@ -67,13 +67,11 @@ export function CalendarView({ onDateClick, onNewBooking }: CalendarViewProps) {
   }
 
   function getBookingsForDate(date: Date) {
+    const targetDateStr = format(date, 'yyyy-MM-dd');
     return bookings.filter((booking) => {
       const bookingDate = new Date(booking.bookingDate);
-      return (
-        bookingDate.getDate() === date.getDate() &&
-        bookingDate.getMonth() === date.getMonth() &&
-        bookingDate.getFullYear() === date.getFullYear()
-      );
+      const bookingDateStr = format(bookingDate, 'yyyy-MM-dd');
+      return bookingDateStr === targetDateStr;
     });
   }
 
