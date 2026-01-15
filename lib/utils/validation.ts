@@ -44,9 +44,9 @@ export const bookingFormSchema = z.object({
     duration = (24 - startHour) + endHour;
   }
   
-  return duration > 0 && duration <= 8;
+  return duration > 0 && duration <= 24;
 }, {
-  message: 'La duración debe ser entre 1 y 8 horas',
+  message: 'La duración debe ser entre 1 y 24 horas',
   path: ['endTime'],
 });
 
