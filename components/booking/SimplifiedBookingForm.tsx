@@ -23,6 +23,8 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [userFound, setUserFound] = useState(false);
+  const [bookedHours, setBookedHours] = useState<string[]>([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false);
 
   // Generate all hours from 12:00 AM to 11:00 PM (0:00 to 23:00)
   const timeSlots = Array.from({ length: 24 }, (_, i) => {
@@ -88,6 +90,15 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     return () => clearTimeout(timer);
   }, [torre]);
 
+  // Fetch bookings when date changes
+  useEffect(() => {
+    if (fecha) {
+      fetchBookingsForDate(fecha);
+    } else {
+      setBookedHours([]);
+    }
+  }, [fecha]);
+
   async function fetchUserData(apartmentNumber: string) {
     setIsLoadingUser(true);
     try {
@@ -111,6 +122,96 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
       setUserFound(false);
     } finally {
       setIsLoadingUser(false);
+    }
+  }
+
+  async function fetchBookingsForDate(date: string) {
+    setIsLoadingBookings(true);
+    try {
+      // Fetch bookings for selected date
+      const response = await fetch(`/api/bookings/day/${date}`);
+      
+      // Also fetch bookings from previous day (to check for overnight bookings)
+      const [year, month, day] = date.split('-').map(Number);
+      const selectedDate = new Date(year, month - 1, day);
+      const previousDate = new Date(year, month - 1, day - 1);
+      const previousDateStr = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, '0')}-${String(previousDate.getDate()).padStart(2, '0')}`;
+      const previousResponse = await fetch(`/api/bookings/day/${previousDateStr}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const occupiedHours: string[] = [];
+        
+        // Process bookings from selected date
+        data.bookings.forEach((booking: any) => {
+          const startTime = new Date(booking.startTime);
+          const endTime = new Date(booking.endTime);
+          const startHour = startTime.getHours();
+          const endHour = endTime.getHours();
+          
+          // Check if booking crosses midnight based on hours
+          // If end hour is less than start hour, it means it goes to next day
+          const crossesMidnight = endHour < startHour || endTime <= startTime;
+          
+          if (crossesMidnight) {
+            // Booking crosses midnight - block from start hour to 23:59
+            for (let hour = startHour; hour < 24; hour++) {
+              const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+              if (!occupiedHours.includes(hourStr)) {
+                occupiedHours.push(hourStr);
+              }
+            }
+          } else {
+            // Same day booking
+            for (let hour = startHour; hour < endHour || (hour === endHour && endTime.getMinutes() > 0); hour++) {
+              const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+              if (!occupiedHours.includes(hourStr)) {
+                occupiedHours.push(hourStr);
+              }
+            }
+          }
+        });
+        
+        // Process bookings from previous day that might extend to selected date
+        if (previousResponse.ok) {
+          const previousData = await previousResponse.json();
+          
+          previousData.bookings.forEach((booking: any) => {
+            const startTime = new Date(booking.startTime);
+            const endTime = new Date(booking.endTime);
+            const startHour = startTime.getHours();
+            const endHour = endTime.getHours();
+            
+            // Check if this booking crosses midnight (end hour < start hour or endTime <= startTime)
+            const crossesMidnight = endHour < startHour || endTime <= startTime;
+            
+            if (crossesMidnight) {
+              // Block from 00:00 to end hour on selected date
+              for (let hour = 0; hour < endHour || (hour === endHour && endTime.getMinutes() > 0); hour++) {
+                const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+                if (!occupiedHours.includes(hourStr)) {
+                  occupiedHours.push(hourStr);
+                }
+              }
+            }
+          });
+        }
+        
+        setBookedHours(occupiedHours);
+        
+        // Clear selected hour if it's now booked
+        if (hora && occupiedHours.includes(hora)) {
+          setHora('');
+          setDuracion('');
+        }
+      } else {
+        setBookedHours([]);
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      setBookedHours([]);
+    } finally {
+      setIsLoadingBookings(false);
     }
   }
 
@@ -299,7 +400,11 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           <input
             type="date"
             value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
+            onChange={(e) => {
+              setFecha(e.target.value);
+              setHora('');
+              setDuracion('');
+            }}
             required
             className="px-4 py-3 rounded-xl transition-colors"
             style={{
@@ -314,6 +419,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             value={hora}
             onChange={(e) => setHora(e.target.value)}
             required
+            disabled={isLoadingBookings}
             className="px-4 py-3 rounded-xl transition-colors"
             style={{
               border: '1px solid #E5E7EB',
@@ -323,12 +429,15 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
               color: '#1F2933'
             }}
           >
-            <option value="">Hora</option>
-            {timeSlots.map((slot) => (
-              <option key={slot} value={slot}>
-                {formatTimeForDisplay(slot)}
-              </option>
-            ))}
+            <option value="">{isLoadingBookings ? 'Cargando...' : 'Hora'}</option>
+            {timeSlots.map((slot) => {
+              const isBooked = bookedHours.includes(slot);
+              return (
+                <option key={slot} value={slot} disabled={isBooked}>
+                  {formatTimeForDisplay(slot)}{isBooked ? ' (Reservada)' : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
         
