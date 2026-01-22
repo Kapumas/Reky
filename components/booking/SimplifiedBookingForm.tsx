@@ -25,27 +25,8 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const [userFound, setUserFound] = useState(false);
 
   // Generate all hours from 12:00 AM to 11:00 PM (0:00 to 23:00)
-  // Filter out past hours if selected date is today
   const timeSlots = Array.from({ length: 24 }, (_, i) => {
     return `${i.toString().padStart(2, '0')}:00`;
-  }).filter((timeSlot) => {
-    // If no date selected, show all slots
-    if (!fecha) return true;
-    
-    // Check if selected date is today
-    const selectedDate = new Date(fecha);
-    const today = new Date();
-    const isToday = selectedDate.toDateString() === today.toDateString();
-    
-    // If not today, show all slots
-    if (!isToday) return true;
-    
-    // If today, filter out past hours
-    const [hourStr] = timeSlot.split(':');
-    const slotHour = parseInt(hourStr);
-    const currentHour = today.getHours();
-    
-    return slotHour > currentHour;
   });
 
   // Format time to AM/PM for display
