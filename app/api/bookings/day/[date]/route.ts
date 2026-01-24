@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBookingsByDate } from '@/lib/firebase/firestore-admin';
-import { parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
+import { parseDateInBogotaTimezone, timestampToISOString } from '@/lib/utils/dateTime';
 
 export async function GET(
   request: NextRequest,
@@ -31,14 +31,15 @@ export async function GET(
     // Convert Firestore Timestamps to ISO strings for JSON serialization
     const serializedBookings = bookings.map(booking => ({
       id: booking.id,
+      confirmationCode: booking.confirmationCode,
       apartmentNumber: booking.apartmentNumber,
       fullName: booking.fullName,
       vehiclePlate: booking.vehiclePlate || '',
       timeSlot: booking.timeSlot,
       status: booking.status,
-      bookingDate: booking.bookingDate.toDate().toISOString(),
-      startTime: booking.startTime.toDate().toISOString(),
-      endTime: booking.endTime.toDate().toISOString(),
+      bookingDate: timestampToISOString(booking.bookingDate),
+      startTime: timestampToISOString(booking.startTime),
+      endTime: timestampToISOString(booking.endTime),
     }));
 
     return NextResponse.json({

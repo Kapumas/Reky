@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentActiveBooking } from '@/lib/firebase/firestore';
+import { timestampToISOString } from '@/lib/utils/dateTime';
 
 export async function GET() {
   try {
@@ -19,8 +20,8 @@ export async function GET() {
       fullName: booking.fullName,
       vehiclePlate: booking.vehiclePlate,
       timeSlot: booking.timeSlot,
-      startTime: booking.startTime.toDate().toISOString(),
-      endTime: booking.endTime.toDate().toISOString(),
+      startTime: timestampToISOString(booking.startTime),
+      endTime: timestampToISOString(booking.endTime),
       status: booking.status,
     };
 

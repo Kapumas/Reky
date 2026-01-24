@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserByApartment } from '@/lib/firebase/firestore-admin';
 import { adminDb } from '@/lib/firebase/admin';
+import { timestampToISOString } from '@/lib/utils/dateTime';
 
 export async function GET(
   request: NextRequest,
@@ -61,8 +62,8 @@ export async function GET(
       success: true,
       user: {
         ...user,
-        createdAt: user.createdAt.toDate().toISOString(),
-        updatedAt: user.updatedAt.toDate().toISOString(),
+        createdAt: timestampToISOString(user.createdAt),
+        updatedAt: timestampToISOString(user.updatedAt),
         vehiclePlate, // Add vehicle plate from last booking
       },
     });

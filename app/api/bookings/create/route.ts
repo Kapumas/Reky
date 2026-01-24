@@ -34,7 +34,21 @@ export async function POST(request: NextRequest) {
     const [endHour, endMinute] = endTime.split(':').map(Number);
     
     const startTimeDate = createBogotaDateTime(date, startHour, startMinute);
-    const endTimeDate = createBogotaDateTime(date, endHour, endMinute);
+    
+    // If end hour is less than start hour, the booking crosses midnight
+    // so we need to use the next day for the end time
+    let endDate = date;
+    if (endHour < startHour) {
+      const [year, month, day] = date.split('-').map(Number);
+      // Create date in UTC to avoid timezone issues
+      const currentDate = new Date(Date.UTC(year, month - 1, day));
+      // Add one day
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      // Format back to YYYY-MM-DD
+      endDate = `${currentDate.getUTCFullYear()}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentDate.getUTCDate()).padStart(2, '0')}`;
+    }
+    
+    const endTimeDate = createBogotaDateTime(endDate, endHour, endMinute);
 
     // Create the booking
     const result = await createBooking({

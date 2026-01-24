@@ -182,8 +182,8 @@ export async function getBookingsByApartment(
   
   // Sort by booking date, newest first
   return bookings.sort((a, b) => {
-    const dateA = a.bookingDate.toDate().getTime();
-    const dateB = b.bookingDate.toDate().getTime();
+    const dateA = a.bookingDate.seconds * 1000 + Math.floor(a.bookingDate.nanoseconds / 1000000);
+    const dateB = b.bookingDate.seconds * 1000 + Math.floor(b.bookingDate.nanoseconds / 1000000);
     return dateB - dateA;
   });
 }

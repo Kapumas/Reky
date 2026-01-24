@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { createBogotaDateTime } from '@/lib/utils/dateTime';
+import { createBogotaDateTime, timestampToISOString } from '@/lib/utils/dateTime';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
       return {
         id: doc.id,
         ...data,
-        bookingDate: data.bookingDate.toDate().toISOString(),
-        startTime: data.startTime.toDate().toISOString(),
-        endTime: data.endTime.toDate().toISOString(),
-        createdAt: data.createdAt.toDate().toISOString(),
+        bookingDate: timestampToISOString(data.bookingDate),
+        startTime: timestampToISOString(data.startTime),
+        endTime: timestampToISOString(data.endTime),
+        createdAt: timestampToISOString(data.createdAt),
       };
     });
 

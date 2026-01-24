@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { getBogotaTime } from '@/lib/utils/dateTime';
+import { getBogotaTime, timestampToISOString } from '@/lib/utils/dateTime';
 
 export async function GET(request: NextRequest) {
   try {
     const now = getBogotaTime();
     const nowTimestamp = Timestamp.fromDate(now);
 
-    // Query for upcoming active bookings
+    // Query for upcoming and currently active bookings (endTime > now)
+    // This includes bookings that are currently running and future bookings
     const snapshot = await adminDb
       .collection('bookings')
       .where('status', '==', 'active')
-      .where('startTime', '>=', nowTimestamp)
-      .orderBy('startTime', 'asc')
+      .where('endTime', '>', nowTimestamp)
+      .orderBy('endTime', 'asc')
       .limit(5)
       .get();
 
@@ -26,9 +27,9 @@ export async function GET(request: NextRequest) {
         vehiclePlate: data.vehiclePlate || '',
         timeSlot: data.timeSlot,
         status: data.status,
-        bookingDate: data.bookingDate.toDate().toISOString(),
-        startTime: data.startTime.toDate().toISOString(),
-        endTime: data.endTime.toDate().toISOString(),
+        bookingDate: timestampToISOString(data.bookingDate),
+        startTime: timestampToISOString(data.startTime),
+        endTime: timestampToISOString(data.endTime),
       };
     });
 

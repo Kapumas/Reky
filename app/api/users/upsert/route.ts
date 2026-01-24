@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { upsertUser } from '@/lib/firebase/firestore-admin';
+import { timestampToISOString } from '@/lib/utils/dateTime';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,8 +35,8 @@ export async function POST(request: NextRequest) {
       success: true,
       user: {
         ...user,
-        createdAt: user.createdAt.toDate().toISOString(),
-        updatedAt: user.updatedAt.toDate().toISOString(),
+        createdAt: timestampToISOString(user.createdAt),
+        updatedAt: timestampToISOString(user.updatedAt),
       },
     });
   } catch (error) {

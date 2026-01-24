@@ -90,6 +90,74 @@ export async function getBookingByCode(
 }
 
 /**
+ * Update an existing booking (Admin SDK)
+ */
+export async function updateBooking(
+  confirmationCode: string,
+  updateData: {
+    bookingDate?: Date;
+    timeSlot?: string;
+    startTime?: Date;
+    endTime?: Date;
+  }
+): Promise<Booking> {
+  const booking = await getBookingByCode(confirmationCode);
+
+  if (!booking) {
+    throw new Error('Reserva no encontrada');
+  }
+
+  if (booking.status === 'cancelled') {
+    throw new Error('No se puede editar una reserva cancelada');
+  }
+
+  // Check for conflicts if date/time is being updated
+  if (updateData.bookingDate && updateData.timeSlot) {
+    const conflicts = await checkAvailability(
+      updateData.bookingDate,
+      updateData.timeSlot
+    );
+    
+    // Filter out the current booking from conflicts
+    const otherConflicts = conflicts.filter(c => c.id !== booking.id);
+    
+    if (otherConflicts.length > 0) {
+      throw new Error('Este horario ya está reservado. Por favor selecciona otro horario.');
+    }
+  }
+
+  const updatePayload: Record<string, any> = {
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+
+  if (updateData.bookingDate) {
+    updatePayload.bookingDate = Timestamp.fromDate(updateData.bookingDate);
+  }
+  if (updateData.timeSlot) {
+    updatePayload.timeSlot = updateData.timeSlot;
+  }
+  if (updateData.startTime) {
+    updatePayload.startTime = Timestamp.fromDate(updateData.startTime);
+  }
+  if (updateData.endTime) {
+    updatePayload.endTime = Timestamp.fromDate(updateData.endTime);
+  }
+
+  await adminDb
+    .collection(BOOKINGS_COLLECTION)
+    .doc(booking.id)
+    .update(updatePayload);
+
+  // Fetch and return updated booking
+  const updatedDoc = await adminDb
+    .collection(BOOKINGS_COLLECTION)
+    .doc(booking.id)
+    .get();
+
+  return { id: updatedDoc.id, ...updatedDoc.data() } as Booking;
+}
+
+/**
  * Cancel a booking (Admin SDK)
  */
 export async function cancelBooking(confirmationCode: string): Promise<void> {
@@ -146,8 +214,8 @@ export async function getBookingsByApartment(
   const bookings = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Booking));
   
   return bookings.sort((a, b) => {
-    const dateA = a.bookingDate.toDate().getTime();
-    const dateB = b.bookingDate.toDate().getTime();
+    const dateA = a.bookingDate.seconds * 1000 + Math.floor(a.bookingDate.nanoseconds / 1000000);
+    const dateB = b.bookingDate.seconds * 1000 + Math.floor(b.bookingDate.nanoseconds / 1000000);
     return dateB - dateA;
   });
 }

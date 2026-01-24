@@ -321,7 +321,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           className="w-full px-4 py-3 rounded-xl transition-colors"
           style={{
             border: `1px solid ${userFound ? '#2F9E44' : '#E5E7EB'}`,
-            fontSize: '14px',
+            fontSize: '16px',
             minHeight: '44px',
             backgroundColor: 'white',
             color: '#1F2933'
@@ -348,7 +348,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           className="w-full px-4 py-3 rounded-xl transition-colors"
           style={{
             border: '1px solid #E5E7EB',
-            fontSize: '14px',
+            fontSize: '16px',
             minHeight: '44px',
             backgroundColor: userFound ? '#F9FAFB' : 'white',
             color: '#1F2933'
@@ -378,7 +378,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           className="w-full px-4 py-3 rounded-xl transition-colors"
           style={{
             border: '1px solid #E5E7EB',
-            fontSize: '14px',
+            fontSize: '16px',
             minHeight: '44px',
             backgroundColor: userFound && placa ? '#F9FAFB' : 'white',
             color: '#1F2933'
@@ -409,7 +409,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             className="px-4 py-3 rounded-xl transition-colors"
             style={{
               border: '1px solid #E5E7EB',
-              fontSize: '14px',
+              fontSize: '16px',
               minHeight: '44px',
               backgroundColor: 'white',
               color: '#1F2933'
@@ -423,7 +423,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             className="px-4 py-3 rounded-xl transition-colors"
             style={{
               border: '1px solid #E5E7EB',
-              fontSize: '14px',
+              fontSize: '16px',
               minHeight: '44px',
               backgroundColor: 'white',
               color: '#1F2933'
@@ -508,7 +508,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
                 className="py-3 px-4 rounded-xl text-center font-medium transition-colors"
                 style={{
                   border: '1px solid #E5E7EB',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   backgroundColor: 'white',
                   color: '#1F2933'
                 }}

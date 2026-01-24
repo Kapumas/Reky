@@ -154,3 +154,23 @@ export function createBogotaDateTime(dateString: string, hours: number, minutes:
   
   return new Date(isoString);
 }
+
+/**
+ * Convert a Firebase Timestamp to ISO string in Bogota timezone
+ * This prevents timezone conversion issues when .toDate() is called
+ */
+export function timestampToISOString(timestamp: { seconds: number; nanoseconds: number }): string {
+  // Convert timestamp to milliseconds
+  const milliseconds = timestamp.seconds * 1000 + Math.floor(timestamp.nanoseconds / 1000000);
+  const date = new Date(milliseconds);
+  
+  // Format in Bogota timezone
+  return formatInTimeZone(date, BOGOTA_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+}
+
+/**
+ * Convert a Date object to ISO string in Bogota timezone
+ */
+export function dateToISOStringBogota(date: Date): string {
+  return formatInTimeZone(date, BOGOTA_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+}
