@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Calendar, Clock, Plus } from 'lucide-react';
 import { formatDateForInput, formatDateWithDayName, formatTimeSlotForDisplay } from '@/lib/utils/dateTime';
 
@@ -17,20 +18,14 @@ interface DayBookingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedDate: Date;
-  onNewBooking: () => void;
 }
 
-export function DayBookingsModal({ isOpen, onClose, selectedDate, onNewBooking }: DayBookingsModalProps) {
+export function DayBookingsModal({ isOpen, onClose, selectedDate }: DayBookingsModalProps) {
+  const router = useRouter();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && selectedDate) {
-      fetchDayBookings();
-    }
-  }, [isOpen, selectedDate]);
-
-  async function fetchDayBookings() {
+  const fetchDayBookings = useCallback(async () => {
     setLoading(true);
     try {
       const dateStr = formatDateForInput(selectedDate);
@@ -45,7 +40,13 @@ export function DayBookingsModal({ isOpen, onClose, selectedDate, onNewBooking }
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (isOpen && selectedDate) {
+      fetchDayBookings();
+    }
+  }, [isOpen, selectedDate, fetchDayBookings]);
 
   if (!isOpen) return null;
 
@@ -165,8 +166,8 @@ export function DayBookingsModal({ isOpen, onClose, selectedDate, onNewBooking }
         <div className="sticky bottom-0 bg-white px-6 py-4" style={{ borderTop: '1px solid #E5E7EB' }}>
           <button
             onClick={() => {
-              onClose();
-              onNewBooking();
+              const dateStr = selectedDate.toISOString().split('T')[0];
+              router.push(`/book?date=${dateStr}`);
             }}
             className="w-full rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
             style={{

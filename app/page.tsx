@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { BookingModal } from '@/components/booking/BookingModal';
+import { useRouter } from 'next/navigation';
 import { WeeklyCalendar } from '@/components/calendar/WeeklyCalendar';
 import { DayBookingsModal } from '@/components/calendar/DayBookingsModal';
 import { UpcomingBookings } from '@/components/home/UpcomingBookings';
 import { ActiveBookingCard } from '@/components/home/ActiveBookingCard';
 
 export default function HomePage() {
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const router = useRouter();
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
@@ -17,12 +17,13 @@ export default function HomePage() {
     setIsDayModalOpen(true);
   }
 
-  function handleOpenBooking() {
-    setIsBookingModalOpen(true);
-  }
-
-  function handleCloseBookingModal() {
-    setIsBookingModalOpen(false);
+  function handleOpenBooking(date?: Date) {
+    if (date) {
+      const dateStr = date.toISOString().split('T')[0];
+      router.push(`/book?date=${dateStr}`);
+    } else {
+      router.push('/book');
+    }
   }
 
   function handleCloseDayModal() {
@@ -45,7 +46,7 @@ export default function HomePage() {
         </div>
 
         <button
-          onClick={handleOpenBooking}
+          onClick={() => handleOpenBooking()}
           className="w-full rounded-xl font-semibold transition-all active:scale-98 mb-6"
           style={{
             backgroundColor: '#2F9E44',
@@ -62,18 +63,11 @@ export default function HomePage() {
         <UpcomingBookings />
       </div>
 
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={handleCloseBookingModal}
-        selectedDate={selectedDate}
-      />
-
       {selectedDate && (
         <DayBookingsModal
           isOpen={isDayModalOpen}
           onClose={handleCloseDayModal}
           selectedDate={selectedDate}
-          onNewBooking={handleOpenBooking}
         />
       )}
     </div>
