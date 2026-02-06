@@ -121,7 +121,7 @@ function ConfirmationContent() {
         </div>
 
         <div className="space-y-3">
-          <Link href="/manage">
+          <Link href={`/manage?apartment=${apartment}`}>
             <button
               className="w-full rounded-xl font-semibold transition-all"
               style={{

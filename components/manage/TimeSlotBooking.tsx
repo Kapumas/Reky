@@ -102,6 +102,17 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
                 </span>
               )}
             </p>
+            
+            {/* Created date */}
+            <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>
+              Creada: {new Date(booking.createdAt).toLocaleDateString('es-CO', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </p>
           </div>
         </div>
 

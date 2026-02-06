@@ -23,7 +23,13 @@ export function parseTimeSlot(date: Date, timeSlot: string): { startTime: Date; 
   const [startTimeStr, endTimeStr] = timeSlot.split('-');
 
   const startTime = parse(startTimeStr, 'HH:mm', date);
-  const endTime = parse(endTimeStr, 'HH:mm', date);
+  let endTime = parse(endTimeStr, 'HH:mm', date);
+
+  // If end time is before or equal to start time, the booking crosses midnight
+  // Add one day to the end time
+  if (endTime <= startTime) {
+    endTime = addDays(endTime, 1);
+  }
 
   return { startTime, endTime };
 }

@@ -14,6 +14,7 @@ interface Booking {
   bookingDate: string;
   startTime: string;
   endTime: string;
+  createdAt: string;
 }
 
 export function UpcomingBookings() {

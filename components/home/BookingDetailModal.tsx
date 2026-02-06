@@ -12,6 +12,7 @@ interface Booking {
   timeSlot: string;
   bookingDate: string;
   startTime: string;
+  createdAt: string;
 }
 
 interface BookingDetailModalProps {
@@ -91,6 +92,23 @@ export function BookingDetailModal({ booking, onClose }: BookingDetailModalProps
               </div>
             </div>
           )}
+
+          <div className="flex items-start gap-3">
+            <Calendar className="h-5 w-5 mt-0.5" style={{ color: '#6B7280' }} />
+            <div>
+              <p style={{ fontSize: '14px', color: '#6B7280' }}>Fecha de creación</p>
+              <p className="font-medium" style={{ color: '#1F2933' }}>
+                {new Date(booking.createdAt).toLocaleDateString('es-CO', { 
+                  day: '2-digit', 
+                  month: 'short', 
+                  year: 'numeric'
+                })} a las {new Date(booking.createdAt).toLocaleTimeString('es-CO', { 
+                  hour: '2-digit', 
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Close Button */}

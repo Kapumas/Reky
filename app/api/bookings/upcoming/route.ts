@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
         bookingDate: timestampToISOString(data.bookingDate),
         startTime: timestampToISOString(data.startTime),
         endTime: timestampToISOString(data.endTime),
+        createdAt: timestampToISOString(data.createdAt),
       };
     });
 

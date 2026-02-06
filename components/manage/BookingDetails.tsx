@@ -103,6 +103,16 @@ export function BookingDetails({ booking, onCancel }: BookingDetailsProps) {
             </p>
           </div>
         </div>
+
+        <div className="flex items-start gap-3">
+          <Calendar className="h-5 w-5 mt-0.5" style={{ color: '#6B7280' }} />
+          <div>
+            <p style={{ fontSize: '13px', color: '#6B7280' }}>Fecha de creación</p>
+            <p className="font-medium" style={{ fontSize: '15px', color: '#1F2933' }}>
+              {formatDateForDisplay(new Date(booking.createdAt))}
+            </p>
+          </div>
+        </div>
       </div>
 
 
