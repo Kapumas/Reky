@@ -8,8 +8,9 @@ export async function GET(
 ) {
   try {
     const { apartmentNumber } = await params;
+    const normalizedApartmentNumber = apartmentNumber?.trim().toUpperCase();
 
-    if (!apartmentNumber) {
+    if (!normalizedApartmentNumber) {
       return NextResponse.json(
         { error: 'Número de apartamento requerido' },
         { status: 400 }
@@ -17,15 +18,15 @@ export async function GET(
     }
 
     // Validate apartment format (TORRE-APTO)
-    const apartmentRegex = /^\d+-\d+$/;
-    if (!apartmentRegex.test(apartmentNumber)) {
+    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
+    if (!apartmentRegex.test(normalizedApartmentNumber)) {
       return NextResponse.json(
-        { error: 'Formato de apartamento inválido. Use TORRE-APTO (ej: 2-101)' },
+        { error: 'Formato de apartamento inválido. Use TORRE-APTO (ej: 1-102B)' },
         { status: 400 }
       );
     }
 
-    const bookings = await getBookingsByApartment(apartmentNumber);
+    const bookings = await getBookingsByApartment(normalizedApartmentNumber);
 
     if (bookings.length === 0) {
       return NextResponse.json(

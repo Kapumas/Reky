@@ -22,16 +22,16 @@ export function ManageBookingsModal({ isOpen, onClose }: ManageBookingsModalProp
 
     try {
       // Validate apartment format
-      const apartmentRegex = /^\d+-\d+$/;
+      const apartmentRegex = /^\d+-[A-Z0-9]+$/;
       if (!apartmentRegex.test(apartmentNumber)) {
-        setError('Formato inválido. Use TORRE-APTO (ej: 2-101)');
+        setError('Formato inválido. Use TORRE-APTO (ej: 1-102B)');
         setIsLoading(false);
         return;
       }
 
       // Redirect to manage page with apartment number
       window.location.href = `/manage?apartment=${apartmentNumber}`;
-    } catch (err) {
+    } catch {
       setError('Error al buscar reservas');
       setIsLoading(false);
     }
@@ -69,13 +69,13 @@ export function ManageBookingsModal({ isOpen, onClose }: ManageBookingsModalProp
               id="apartmentNumber"
               value={apartmentNumber}
               onChange={(e) => {
-                let value = e.target.value;
+                let value = e.target.value.toUpperCase();
                 
-                // Only allow numbers and hyphen
-                value = value.replace(/[^0-9-]/g, '');
+                // Allow only letters, numbers and hyphen
+                value = value.replace(/[^A-Z0-9-]/g, '');
                 
-                // Auto-add hyphen after first digit
-                if (value.length === 1 && /^\d$/.test(value)) {
+                // Auto-add hyphen after first digit only while typing
+                if (value.length === 1 && /^\d$/.test(value) && value.length > apartmentNumber.length) {
                   value = value + '-';
                 }
                 
@@ -84,15 +84,21 @@ export function ManageBookingsModal({ isOpen, onClose }: ManageBookingsModalProp
                 if (hyphenCount > 1) {
                   value = value.replace(/-/g, (match, offset) => offset === value.indexOf('-') ? '-' : '');
                 }
+
+                // Keep tower numeric and apartment alphanumeric
+                const [towerRaw, apartmentRaw = ''] = value.split('-');
+                const tower = towerRaw.replace(/[^0-9]/g, '');
+                const apartment = apartmentRaw.replace(/[^A-Z0-9]/g, '');
+                value = value.includes('-') ? `${tower}-${apartment}` : tower;
                 
-                // Limit format to X-XXXX (max 6 characters)
-                if (value.length > 6) {
-                  value = value.slice(0, 6);
+                // Limit format to TORRE-APTO (max 10 characters)
+                if (value.length > 10) {
+                  value = value.slice(0, 10);
                 }
                 
                 setApartmentNumber(value);
               }}
-              placeholder="Ej: 2-101"
+              placeholder="Ej: 1-102B"
               className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
               style={{
                 borderColor: '#E5E7EB',
@@ -102,7 +108,7 @@ export function ManageBookingsModal({ isOpen, onClose }: ManageBookingsModalProp
               disabled={isLoading}
             />
             <p className="mt-1 text-xs" style={{ color: '#6B7280' }}>
-              Formato: TORRE-APTO
+              Formato: TORRE-APTO (ej: 1-102B)
             </p>
           </div>
 

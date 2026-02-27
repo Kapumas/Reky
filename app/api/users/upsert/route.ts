@@ -6,9 +6,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { apartmentNumber, fullName, email } = body;
+    const normalizedApartmentNumber = apartmentNumber?.trim().toUpperCase();
 
     // Validate required fields
-    if (!apartmentNumber || !fullName) {
+    if (!normalizedApartmentNumber || !fullName) {
       return NextResponse.json(
         { error: 'Apartamento y nombre son requeridos' },
         { status: 400 }
@@ -16,17 +17,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate apartment format (TORRE-APTO)
-    const apartmentRegex = /^\d+-\d+$/;
-    if (!apartmentRegex.test(apartmentNumber)) {
+    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
+    if (!apartmentRegex.test(normalizedApartmentNumber)) {
       return NextResponse.json(
-        { error: 'Formato de apartamento inválido. Use TORRE-APTO (ej: 2-101)' },
+        { error: 'Formato de apartamento inválido. Use TORRE-APTO (ej: 1-102B)' },
         { status: 400 }
       );
     }
 
     // Upsert user
     const user = await upsertUser({
-      apartmentNumber,
+      apartmentNumber: normalizedApartmentNumber,
       fullName,
       email,
     });

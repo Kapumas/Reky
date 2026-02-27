@@ -9,8 +9,9 @@ export async function GET(
 ) {
   try {
     const { apartmentNumber } = await params;
+    const normalizedApartmentNumber = apartmentNumber?.trim().toUpperCase();
 
-    if (!apartmentNumber) {
+    if (!normalizedApartmentNumber) {
       return NextResponse.json(
         { error: 'Número de apartamento requerido' },
         { status: 400 }
@@ -18,15 +19,15 @@ export async function GET(
     }
 
     // Validate apartment format (TORRE-APTO)
-    const apartmentRegex = /^\d+-\d+$/;
-    if (!apartmentRegex.test(apartmentNumber)) {
+    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
+    if (!apartmentRegex.test(normalizedApartmentNumber)) {
       return NextResponse.json(
-        { error: 'Formato de apartamento inválido. Use TORRE-APTO (ej: 2-101)' },
+        { error: 'Formato de apartamento inválido. Use TORRE-APTO (ej: 1-102B)' },
         { status: 400 }
       );
     }
 
-    const user = await getUserByApartment(apartmentNumber);
+    const user = await getUserByApartment(normalizedApartmentNumber);
 
     if (!user) {
       return NextResponse.json(
@@ -40,7 +41,7 @@ export async function GET(
     try {
       const bookingsSnapshot = await adminDb
         .collection('bookings')
-        .where('apartmentNumber', '==', apartmentNumber)
+        .where('apartmentNumber', '==', normalizedApartmentNumber)
         .where('status', '==', 'active')
         .orderBy('createdAt', 'desc')
         .limit(1)

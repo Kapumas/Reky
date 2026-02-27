@@ -76,7 +76,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
 
   // Auto-fill user data when apartment number is valid (with debounce)
   useEffect(() => {
-    const apartmentRegex = /^\d+-\d+$/;
+    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
     
     // Debounce timer
     const timer = setTimeout(() => {
@@ -289,13 +289,13 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         </label>
         <input
           type="text"
-          inputMode="numeric"
+          inputMode="text"
           value={torre}
           onChange={(e) => {
-            let value = e.target.value;
+            let value = e.target.value.toUpperCase();
             
-            // Only allow numbers and hyphen
-            value = value.replace(/[^0-9-]/g, '');
+            // Allow only letters, numbers and hyphen
+            value = value.replace(/[^A-Z0-9-]/g, '');
             
             // Auto-add hyphen after first digit only if user is typing (not deleting)
             if (value.length === 1 && /^\d$/.test(value) && value.length > torre.length) {
@@ -307,17 +307,23 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             if (hyphenCount > 1) {
               value = value.replace(/-/g, (match, offset) => offset === value.indexOf('-') ? '-' : '');
             }
+
+            // Keep tower numeric and apartment alphanumeric
+            const [towerRaw, apartmentRaw = ''] = value.split('-');
+            const tower = towerRaw.replace(/[^0-9]/g, '');
+            const apartment = apartmentRaw.replace(/[^A-Z0-9]/g, '');
+            value = value.includes('-') ? `${tower}-${apartment}` : tower;
             
-            // Limit format to X-XXX (max 10 characters)
+            // Limit format to TORRE-APTO (max 10 characters)
             if (value.length > 10) {
               value = value.slice(0, 10);
             }
             
             setTorre(value);
           }}
-          placeholder="2-101"
+          placeholder="1-102B"
           required
-          pattern="^\d+-\d+$"
+          pattern="^\d+-[A-Za-z0-9]+$"
           className="w-full px-4 py-3 rounded-xl transition-colors"
           style={{
             border: `1px solid ${userFound ? '#2F9E44' : '#E5E7EB'}`,
@@ -328,7 +334,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           }}
         />
         <p className="mt-1" style={{ fontSize: '12px', color: userFound ? '#2F9E44' : '#6B7280' }}>
-          {isLoadingUser ? 'Buscando usuario...' : userFound ? '✓ Usuario encontrado' : 'Formato: TORRE-APTO (ej: 2-101)'}
+          {isLoadingUser ? 'Buscando usuario...' : userFound ? '✓ Usuario encontrado' : 'Formato: TORRE-APTO (ej: 1-102B)'}
         </p>
       </div>
 

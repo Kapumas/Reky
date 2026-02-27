@@ -3,9 +3,11 @@ import { z } from 'zod';
 export const bookingFormSchema = z.object({
   apartmentNumber: z
     .string()
+    .trim()
+    .toUpperCase()
     .min(1, 'El número de apartamento es requerido')
     .max(10, 'El número de apartamento debe tener máximo 10 caracteres')
-    .regex(/^[a-zA-Z0-9-]+$/, 'El número de apartamento solo puede contener letras, números y guiones'),
+    .regex(/^\d+-[A-Z0-9]+$/, 'El número de apartamento debe tener formato TORRE-APTO (ej: 1-102B)'),
   fullName: z
     .string()
     .min(2, 'El nombre completo debe tener al menos 2 caracteres')

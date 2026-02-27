@@ -30,16 +30,18 @@ export function BookingLookup({ onBookingsFound }: BookingLookupProps) {
     setIsSearching(true);
     setErrorMessage('');
 
+    const normalizedApartmentNumber = apartmentNumber.trim().toUpperCase();
+
     // Validate apartment format
-    const apartmentRegex = /^\d+-\d+$/;
-    if (!apartmentRegex.test(apartmentNumber)) {
-      setErrorMessage('Formato inválido. Use TORRE-APTO (ej: 2-101)');
+    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
+    if (!apartmentRegex.test(normalizedApartmentNumber)) {
+      setErrorMessage('Formato inválido. Use TORRE-APTO (ej: 1-102B)');
       setIsSearching(false);
       return;
     }
 
     try {
-      const response = await fetch(`/api/bookings/apartment/${apartmentNumber}`);
+      const response = await fetch(`/api/bookings/apartment/${normalizedApartmentNumber}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -51,7 +53,7 @@ export function BookingLookup({ onBookingsFound }: BookingLookupProps) {
           setErrorMessage(data.error || 'Error al obtener las reservas');
         }
       }
-    } catch (error) {
+    } catch {
       setErrorMessage('Error de conexión. Por favor verifica tu conexión.');
     } finally {
       setIsSearching(false);
@@ -79,8 +81,8 @@ export function BookingLookup({ onBookingsFound }: BookingLookupProps) {
         <input
           type="text"
           value={apartmentNumber}
-          onChange={(e) => setApartmentNumber(e.target.value)}
-          placeholder="2-101"
+          onChange={(e) => setApartmentNumber(e.target.value.toUpperCase())}
+          placeholder="1-102B"
           required
           className="w-full px-4 py-3 rounded-xl transition-colors"
           style={{
@@ -92,7 +94,7 @@ export function BookingLookup({ onBookingsFound }: BookingLookupProps) {
           }}
         />
         <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
-          Formato: TORRE-APTO (ej: 2-101)
+          Formato: TORRE-APTO (ej: 1-102B)
         </p>
       </div>
 

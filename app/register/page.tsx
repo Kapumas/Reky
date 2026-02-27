@@ -105,10 +105,39 @@ export default function RegisterPage() {
               <input
                 type="text"
                 value={torre}
-                onChange={(e) => setTorre(e.target.value)}
-                placeholder="2-101"
+                onChange={(e) => {
+                  let value = e.target.value.toUpperCase();
+
+                  // Allow only letters, numbers and hyphen
+                  value = value.replace(/[^A-Z0-9-]/g, '');
+
+                  // Auto-add hyphen after first digit only while typing
+                  if (value.length === 1 && /^\d$/.test(value) && value.length > torre.length) {
+                    value = value + '-';
+                  }
+
+                  // Prevent multiple hyphens
+                  const hyphenCount = (value.match(/-/g) || []).length;
+                  if (hyphenCount > 1) {
+                    value = value.replace(/-/g, (match, offset) => offset === value.indexOf('-') ? '-' : '');
+                  }
+
+                  // Keep tower numeric and apartment alphanumeric
+                  const [towerRaw, apartmentRaw = ''] = value.split('-');
+                  const tower = towerRaw.replace(/[^0-9]/g, '');
+                  const apartment = apartmentRaw.replace(/[^A-Z0-9]/g, '');
+                  value = value.includes('-') ? `${tower}-${apartment}` : tower;
+
+                  // Limit format to TORRE-APTO (max 10 characters)
+                  if (value.length > 10) {
+                    value = value.slice(0, 10);
+                  }
+
+                  setTorre(value);
+                }}
+                placeholder="1-102B"
                 required
-                pattern="^\d+-\d+$"
+                pattern="^\d+-[A-Za-z0-9]+$"
                 className="w-full px-4 py-3 rounded-xl transition-colors"
                 style={{
                   border: '1px solid #E5E7EB',
@@ -119,7 +148,7 @@ export default function RegisterPage() {
                 }}
               />
               <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
-                Formato: TORRE-APTO (ej: 2-101)
+                Formato: TORRE-APTO (ej: 1-102B)
               </p>
             </div>
 
