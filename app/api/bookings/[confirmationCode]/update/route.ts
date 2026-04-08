@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateBooking } from '@/lib/firebase/firestore-admin';
-import { parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
+import { getBookingByCode, updateBooking } from '@/lib/firebase/firestore-admin';
+import { createBogotaDateTime } from '@/lib/utils/dateTime';
+import { validateWeeklyHoursQuota } from '@/lib/services/weekly-booking-quota';
 import { z } from 'zod';
 
 const updateBookingSchema = z.object({
@@ -17,6 +18,15 @@ export async function PUT(
     const { confirmationCode } = await params;
     const body = await request.json();
 
+    const existingBooking = await getBookingByCode(confirmationCode);
+
+    if (!existingBooking) {
+      return NextResponse.json(
+        { error: 'Reserva no encontrada' },
+        { status: 404 }
+      );
+    }
+
     // Validate input
     const validation = updateBookingSchema.safeParse(body);
     if (!validation.success) {
@@ -29,26 +39,33 @@ export async function PUT(
     const { date, startTime, endTime } = validation.data;
 
     // Parse date and times
-    const bookingDate = parseDateInBogotaTimezone(date);
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const [endHour, endMinute] = endTime.split(':').map(Number);
 
-    const startDateTime = new Date(bookingDate);
-    startDateTime.setHours(startHour, startMinute, 0, 0);
+    const startDateTime = createBogotaDateTime(date, startHour, startMinute);
 
-    const endDateTime = new Date(bookingDate);
-    endDateTime.setHours(endHour, endMinute, 0, 0);
-
-    // Handle overnight bookings (end time is next day)
-    if (endDateTime <= startDateTime) {
-      endDateTime.setDate(endDateTime.getDate() + 1);
+    let endDate = date;
+    if (endHour < startHour) {
+      const [year, month, day] = date.split('-').map(Number);
+      const currentDate = new Date(Date.UTC(year, month - 1, day));
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      endDate = `${currentDate.getUTCFullYear()}-${String(currentDate.getUTCMonth() + 1).padStart(2, '0')}-${String(currentDate.getUTCDate()).padStart(2, '0')}`;
     }
+
+    const endDateTime = createBogotaDateTime(endDate, endHour, endMinute);
+
+    await validateWeeklyHoursQuota({
+      apartmentNumber: existingBooking.apartmentNumber,
+      newStartTime: startDateTime,
+      newEndTime: endDateTime,
+      ignoreBookingId: existingBooking.id,
+    });
 
     const timeSlot = `${startTime}-${endTime}`;
 
     // Update the booking
     const updatedBooking = await updateBooking(confirmationCode, {
-      bookingDate,
+      bookingDate: startDateTime,
       timeSlot,
       startTime: startDateTime,
       endTime: endDateTime,
@@ -63,6 +80,13 @@ export async function PUT(
     console.error('Error updating booking:', error);
 
     if (error instanceof Error) {
+      if (error.message.includes('Saldo semanal insuficiente')) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 409 }
+        );
+      }
+
       return NextResponse.json(
         { error: error.message },
         { status: 400 }

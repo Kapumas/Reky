@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { SimplifiedBookingForm } from '@/components/booking/SimplifiedBookingForm';
+import { SessionGuard } from '@/components/auth/SessionGuard';
 import { Suspense } from 'react';
 
 function BookingPageContent() {
@@ -52,12 +53,14 @@ function BookingPageContent() {
 
 export default function BookingPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F6F8F7' }}>
-        <p style={{ color: '#6B7280' }}>Cargando...</p>
-      </div>
-    }>
-      <BookingPageContent />
-    </Suspense>
+    <SessionGuard>
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F6F8F7' }}>
+          <p style={{ color: '#6B7280' }}>Cargando...</p>
+        </div>
+      }>
+        <BookingPageContent />
+      </Suspense>
+    </SessionGuard>
   );
 }

@@ -153,7 +153,7 @@ export function UpcomingBookings() {
                         fontWeight: '600',
                       }}
                     >
-                      +1 día
+                      Toda la noche
                     </span>
                   )}
                 </div>

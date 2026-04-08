@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { SessionGuard } from '@/components/auth/SessionGuard';
 import { formatDateForDisplay, formatTimeSlotForDisplay, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
 import { CheckCircle, Calendar, Clock, Home, User, Car } from 'lucide-react';
 
@@ -157,12 +158,14 @@ function ConfirmationContent() {
 
 export default function ConfirmationPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F6F8F7' }}>
-        <p className="text-center" style={{ fontSize: '14px', color: '#6B7280' }}>Cargando...</p>
-      </div>
-    }>
-      <ConfirmationContent />
-    </Suspense>
+    <SessionGuard>
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F6F8F7' }}>
+          <p className="text-center" style={{ fontSize: '14px', color: '#6B7280' }}>Cargando...</p>
+        </div>
+      }>
+        <ConfirmationContent />
+      </Suspense>
+    </SessionGuard>
   );
 }

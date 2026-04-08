@@ -1,29 +1,38 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DayBookingsGroup } from '@/components/manage/DayBookingsGroup';
+import { SessionGuard } from '@/components/auth/SessionGuard';
 import { Search, Loader2, ArrowLeft } from 'lucide-react';
 import { groupBookingsByDate, type Booking } from '@/lib/utils/bookingHelpers';
+import { useUserSession } from '@/hooks/useUserSession';
 
 export const dynamic = 'force-dynamic';
 
 function ManagePageContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const apartmentFromUrl = searchParams.get('apartment');
+  const { session, isHydrated } = useUserSession();
   
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [apartmentNumber, setApartmentNumber] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCancelled, setShowCancelled] = useState(false);
 
   useEffect(() => {
-    if (apartmentFromUrl) {
-      fetchBookings(apartmentFromUrl);
+    if (!isHydrated) {
+      return;
     }
-  }, [apartmentFromUrl]);
+
+    if (!session?.apartmentNumber) {
+      setError('No se encontró una sesión válida para consultar tus reservas.');
+      setIsLoading(false);
+      return;
+    }
+
+    fetchBookings(session.apartmentNumber);
+  }, [isHydrated, session?.apartmentNumber]);
 
   async function fetchBookings(apartment: string) {
     setIsLoading(true);
@@ -44,7 +53,7 @@ function ManagePageContent() {
         setBookings(data.bookings);
         setApartmentNumber(apartment);
       }
-    } catch (err) {
+    } catch {
       setError('Error al cargar las reservas. Intenta nuevamente.');
       setBookings([]);
     } finally {
@@ -141,7 +150,7 @@ function ManagePageContent() {
         ) : bookings.length === 0 ? (
           <div className="bg-white rounded-2xl p-6 text-center" style={{ border: '1px solid #E5E7EB' }}>
             <p className="mb-4" style={{ color: '#6B7280', fontSize: '14px' }}>
-              No se encontraron reservas para este apartamento
+              No se encontraron reservas para tu apartamento
             </p>
             <button
               onClick={handleBack}
@@ -211,7 +220,7 @@ function ManagePageContent() {
               className="w-full text-center underline py-2"
               style={{ fontSize: '14px', color: '#2F9E44' }}
             >
-              Buscar otro apartamento
+              Volver al inicio
             </button>
           </div>
         )}
@@ -222,17 +231,8 @@ function ManagePageContent() {
 
 export default function ManagePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen" style={{ backgroundColor: '#F6F8F7' }}>
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-2xl p-12 text-center" style={{ border: '1px solid #E5E7EB' }}>
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" style={{ color: '#2F9E44' }} />
-            <p style={{ color: '#6B7280', fontSize: '14px' }}>Cargando...</p>
-          </div>
-        </div>
-      </div>
-    }>
+    <SessionGuard>
       <ManagePageContent />
-    </Suspense>
+    </SessionGuard>
   );
 }

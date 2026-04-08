@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
+import { formatApartmentInput } from '@/lib/utils/apartment-input';
 
 interface ManageBookingsModalProps {
   isOpen: boolean;
@@ -69,34 +70,7 @@ export function ManageBookingsModal({ isOpen, onClose }: ManageBookingsModalProp
               id="apartmentNumber"
               value={apartmentNumber}
               onChange={(e) => {
-                let value = e.target.value.toUpperCase();
-                
-                // Allow only letters, numbers and hyphen
-                value = value.replace(/[^A-Z0-9-]/g, '');
-                
-                // Auto-add hyphen after first digit only while typing
-                if (value.length === 1 && /^\d$/.test(value) && value.length > apartmentNumber.length) {
-                  value = value + '-';
-                }
-                
-                // Prevent multiple hyphens
-                const hyphenCount = (value.match(/-/g) || []).length;
-                if (hyphenCount > 1) {
-                  value = value.replace(/-/g, (match, offset) => offset === value.indexOf('-') ? '-' : '');
-                }
-
-                // Keep tower numeric and apartment alphanumeric
-                const [towerRaw, apartmentRaw = ''] = value.split('-');
-                const tower = towerRaw.replace(/[^0-9]/g, '');
-                const apartment = apartmentRaw.replace(/[^A-Z0-9]/g, '');
-                value = value.includes('-') ? `${tower}-${apartment}` : tower;
-                
-                // Limit format to TORRE-APTO (max 10 characters)
-                if (value.length > 10) {
-                  value = value.slice(0, 10);
-                }
-                
-                setApartmentNumber(value);
+                setApartmentNumber(formatApartmentInput(e.target.value, apartmentNumber));
               }}
               placeholder="Ej: 1-102B"
               className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"

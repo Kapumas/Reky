@@ -126,7 +126,7 @@ export async function updateBooking(
     }
   }
 
-  const updatePayload: Record<string, any> = {
+  const updatePayload: Record<string, unknown> = {
     updatedAt: FieldValue.serverTimestamp(),
   };
 
@@ -221,6 +221,21 @@ export async function getBookingsByApartment(
 }
 
 /**
+ * Get active bookings for a specific apartment (Admin SDK)
+ */
+export async function getActiveBookingsByApartment(
+  apartmentNumber: string
+): Promise<Booking[]> {
+  const snapshot = await adminDb
+    .collection(BOOKINGS_COLLECTION)
+    .where('apartmentNumber', '==', apartmentNumber)
+    .where('status', '==', 'active')
+    .get();
+
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Booking));
+}
+
+/**
  * Get user by apartment number (Admin SDK)
  */
 export async function getUserByApartment(
@@ -246,7 +261,7 @@ export async function upsertUser(userData: UserInput): Promise<User> {
   const existingUser = await getUserByApartment(userData.apartmentNumber);
 
   if (existingUser) {
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       fullName: userData.fullName,
       updatedAt: FieldValue.serverTimestamp(),
     };
@@ -267,7 +282,7 @@ export async function upsertUser(userData: UserInput): Promise<User> {
     const updatedDoc = updatedSnapshot.docs[0];
     return { id: updatedDoc.id, ...updatedDoc.data() } as User;
   } else {
-    const newUserData: Record<string, any> = {
+    const newUserData: Record<string, unknown> = {
       apartmentNumber: userData.apartmentNumber,
       fullName: userData.fullName,
       createdAt: FieldValue.serverTimestamp(),

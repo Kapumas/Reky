@@ -4,11 +4,13 @@ A modern, mobile-friendly web application for managing electric vehicle charging
 
 ## Features
 
-- **Simple Booking**: Residents can book 2-hour charging slots by providing apartment number and name
+- **Apartment Login Session**: Residents log in using apartment number and keep a persistent local session
+- **Personalized Home**: Greeting, remaining weekly hours, next-week balance, and next scheduled charging
+- **Simple Booking**: Residents can book charging slots from their authenticated session
 - **Real-time Availability**: See available time slots and avoid double-bookings
-- **Booking Management**: View and cancel bookings using confirmation codes
+- **Booking Management**: View, edit, and cancel bookings for the logged-in apartment
+- **Weekly Hour Bank**: Booking hours are discounted from weekly quota (default 10h), reset every Monday 00:00 (Bogotá)
 - **Mobile-First Design**: Fully responsive UI optimized for mobile devices
-- **No Authentication Required**: Easy access using 8-character confirmation codes
 
 ## Tech Stack
 
@@ -131,6 +133,19 @@ Edit `/lib/constants.ts` to customize:
 - **Operating Hours**: Default is 6 AM - 10 PM
 - **Max Advance Booking**: Default is 30 days
 - **Min Advance Booking**: Default is 2 hours
+
+### Weekly Hour Quota
+
+Configure the weekly quota per apartment with:
+
+```bash
+WEEKLY_HOURS_LIMIT=10
+```
+
+- Applied on booking creation and booking edits
+- Cancelled bookings do not consume hours
+- Hours reset every Monday at 00:00 in Bogotá timezone
+- Bookings crossing week boundaries are prorated per week
 
 ### App Branding
 

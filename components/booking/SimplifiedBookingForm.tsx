@@ -3,16 +3,32 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatDateForInput, formatDateWithDayName, formatTimeToAMPM, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
+import { useUserSession } from '@/hooks/useUserSession';
 
 interface SimplifiedBookingFormProps {
   preSelectedDate?: Date;
   onSuccess?: () => void;
 }
 
+interface DayBookingItem {
+  startTime: string;
+  endTime: string;
+}
+
+interface WeeklyUsageApiResponse {
+  usage: {
+    weeklyLimit: number;
+    currentWeek: {
+      remainingHours: number;
+    };
+  };
+}
+
 export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: SimplifiedBookingFormProps) {
   const router = useRouter();
-  const [torre, setTorre] = useState('');
-  const [nombre, setNombre] = useState('');
+  const { session } = useUserSession();
+  const [torre, setTorre] = useState(session?.apartmentNumber ?? '');
+  const [nombre, setNombre] = useState(session?.fullName ?? '');
   const [placa, setPlaca] = useState('');
   const [fecha, setFecha] = useState(
     preSelectedDate ? formatDateForInput(preSelectedDate) : ''
@@ -25,6 +41,9 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const [userFound, setUserFound] = useState(false);
   const [bookedHours, setBookedHours] = useState<string[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [selectedWeekRemainingHours, setSelectedWeekRemainingHours] = useState<number | null>(null);
+  const [isLoadingWeekHours, setIsLoadingWeekHours] = useState(false);
+  const [weeklyHoursLimit, setWeeklyHoursLimit] = useState(10);
 
   // Generate all hours from 12:00 AM to 11:00 PM (0:00 to 23:00)
   const timeSlots = Array.from({ length: 24 }, (_, i) => {
@@ -61,6 +80,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const horaFinal = hora && duracion ? calculateEndTime(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : '';
   const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : false;
   const maxDuracion = 24; // Always 24 hours max
+  const weeklyLimitQuickDuration = Math.max(1, Math.min(maxDuracion, Math.floor(weeklyHoursLimit)));
 
   // Format vehicle plate with mask ABC-123
   const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,32 +94,14 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     setPlaca(value);
   };
 
-  // Auto-fill user data when apartment number is valid (with debounce)
   useEffect(() => {
-    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
-    
-    // Debounce timer
-    const timer = setTimeout(() => {
-      if (apartmentRegex.test(torre)) {
-        fetchUserData(torre);
-      } else {
-        setUserFound(false);
-      }
-    }, 500); // 500ms debounce
-    
-    return () => clearTimeout(timer);
-  }, [torre]);
+    if (!session) return;
 
-  // Fetch bookings when date changes
-  useEffect(() => {
-    if (fecha) {
-      fetchBookingsForDate(fecha);
-    } else {
-      setBookedHours([]);
-    }
-  }, [fecha]);
+    setTorre(session.apartmentNumber);
+    setNombre(session.fullName);
+  }, [session]);
 
-  async function fetchUserData(apartmentNumber: string) {
+  const fetchUserData = React.useCallback(async (apartmentNumber: string) => {
     setIsLoadingUser(true);
     try {
       const response = await fetch(`/api/users/${apartmentNumber}`);
@@ -123,9 +125,9 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     } finally {
       setIsLoadingUser(false);
     }
-  }
+  }, []);
 
-  async function fetchBookingsForDate(date: string) {
+  const fetchBookingsForDate = React.useCallback(async (date: string) => {
     setIsLoadingBookings(true);
     try {
       // Fetch bookings for selected date
@@ -133,7 +135,6 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
       
       // Also fetch bookings from previous day (to check for overnight bookings)
       const [year, month, day] = date.split('-').map(Number);
-      const selectedDate = new Date(year, month - 1, day);
       const previousDate = new Date(year, month - 1, day - 1);
       const previousDateStr = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, '0')}-${String(previousDate.getDate()).padStart(2, '0')}`;
       const previousResponse = await fetch(`/api/bookings/day/${previousDateStr}`);
@@ -143,7 +144,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         const occupiedHours: string[] = [];
         
         // Process bookings from selected date
-        data.bookings.forEach((booking: any) => {
+        data.bookings.forEach((booking: DayBookingItem) => {
           const startTime = new Date(booking.startTime);
           const endTime = new Date(booking.endTime);
           const startHour = startTime.getHours();
@@ -176,7 +177,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         if (previousResponse.ok) {
           const previousData = await previousResponse.json();
           
-          previousData.bookings.forEach((booking: any) => {
+          previousData.bookings.forEach((booking: DayBookingItem) => {
             const startTime = new Date(booking.startTime);
             const endTime = new Date(booking.endTime);
             const startHour = startTime.getHours();
@@ -213,7 +214,63 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     } finally {
       setIsLoadingBookings(false);
     }
-  }
+  }, [hora]);
+
+  const fetchWeekRemainingHours = React.useCallback(async (apartmentNumber: string, date: string) => {
+    setIsLoadingWeekHours(true);
+
+    try {
+      const response = await fetch(`/api/bookings/usage/${apartmentNumber}?date=${date}`);
+
+      if (response.ok) {
+        const data: WeeklyUsageApiResponse = await response.json();
+        setWeeklyHoursLimit(data.usage.weeklyLimit > 0 ? data.usage.weeklyLimit : 10);
+        setSelectedWeekRemainingHours(data.usage.currentWeek.remainingHours);
+      } else {
+        setWeeklyHoursLimit(10);
+        setSelectedWeekRemainingHours(null);
+      }
+    } catch {
+      setWeeklyHoursLimit(10);
+      setSelectedWeekRemainingHours(null);
+    } finally {
+      setIsLoadingWeekHours(false);
+    }
+  }, []);
+
+  // Auto-fill user data when apartment number is valid (with debounce)
+  useEffect(() => {
+    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
+    
+    // Debounce timer
+    const timer = setTimeout(() => {
+      if (apartmentRegex.test(torre)) {
+        fetchUserData(torre);
+      } else {
+        setUserFound(false);
+      }
+    }, 500); // 500ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [torre, fetchUserData]);
+
+  // Fetch bookings when date changes
+  useEffect(() => {
+    const apartmentRegex = /^\d+-[A-Z0-9]+$/;
+
+    if (fecha) {
+      fetchBookingsForDate(fecha);
+
+      if (apartmentRegex.test(torre)) {
+        fetchWeekRemainingHours(torre, fecha);
+      } else {
+        setSelectedWeekRemainingHours(null);
+      }
+    } else {
+      setBookedHours([]);
+      setSelectedWeekRemainingHours(null);
+    }
+  }, [fecha, torre, fetchBookingsForDate, fetchWeekRemainingHours]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -265,7 +322,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           name: nombre,
           vehiclePlate: placa,
           date: fecha,
-          timeSlot: `${hora}-${parseInt(hora.split(':')[0]) + 2}:00`,
+          timeSlot: `${hora}-${horaFinal}`,
         });
         router.push(`/confirmation?${params.toString()}`);
       } else {
@@ -291,50 +348,21 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           type="text"
           inputMode="text"
           value={torre}
-          onChange={(e) => {
-            let value = e.target.value.toUpperCase();
-            
-            // Allow only letters, numbers and hyphen
-            value = value.replace(/[^A-Z0-9-]/g, '');
-            
-            // Auto-add hyphen after first digit only if user is typing (not deleting)
-            if (value.length === 1 && /^\d$/.test(value) && value.length > torre.length) {
-              value = value + '-';
-            }
-            
-            // Prevent multiple hyphens
-            const hyphenCount = (value.match(/-/g) || []).length;
-            if (hyphenCount > 1) {
-              value = value.replace(/-/g, (match, offset) => offset === value.indexOf('-') ? '-' : '');
-            }
-
-            // Keep tower numeric and apartment alphanumeric
-            const [towerRaw, apartmentRaw = ''] = value.split('-');
-            const tower = towerRaw.replace(/[^0-9]/g, '');
-            const apartment = apartmentRaw.replace(/[^A-Z0-9]/g, '');
-            value = value.includes('-') ? `${tower}-${apartment}` : tower;
-            
-            // Limit format to TORRE-APTO (max 10 characters)
-            if (value.length > 10) {
-              value = value.slice(0, 10);
-            }
-            
-            setTorre(value);
-          }}
+          readOnly
+          disabled
           placeholder="1-102B"
-          required
           pattern="^\d+-[A-Za-z0-9]+$"
           className="w-full px-4 py-3 rounded-xl transition-colors"
           style={{
             border: `1px solid ${userFound ? '#2F9E44' : '#E5E7EB'}`,
             fontSize: '16px',
             minHeight: '44px',
-            backgroundColor: 'white',
+            backgroundColor: '#F9FAFB',
             color: '#1F2933'
           }}
         />
         <p className="mt-1" style={{ fontSize: '12px', color: userFound ? '#2F9E44' : '#6B7280' }}>
-          {isLoadingUser ? 'Buscando usuario...' : userFound ? '✓ Usuario encontrado' : 'Formato: TORRE-APTO (ej: 1-102B)'}
+          {isLoadingUser ? 'Buscando usuario...' : userFound ? '✓ Usuario encontrado (dato bloqueado de sesión)' : 'Apartamento de sesión (no editable)'}
         </p>
       </div>
 
@@ -348,7 +376,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         <input
           type="text"
           value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
+          readOnly
           placeholder="Pepito Perez"
           required
           className="w-full px-4 py-3 rounded-xl transition-colors"
@@ -360,11 +388,9 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             color: '#1F2933'
           }}
         />
-        {userFound && (
-          <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
-            Puedes modificar el nombre si ha cambiado
-          </p>
-        )}
+        <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
+          Nombre asociado a tu sesión
+        </p>
       </div>
 
       <div>
@@ -446,6 +472,24 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             })}
           </select>
         </div>
+
+        {fecha && (
+          <div
+            className="mt-3 p-3 rounded-xl"
+            style={{
+              backgroundColor: '#ECFDF3',
+              border: '1px solid #86EFAC',
+            }}
+          >
+            <p style={{ fontSize: '13px', color: '#166534', fontWeight: '500' }}>
+              {isLoadingWeekHours
+                ? 'Consultando saldo de horas para esa semana...'
+                : selectedWeekRemainingHours !== null
+                  ? `Tienes ${selectedWeekRemainingHours} horas disponibles para la semana de esta reserva.`
+                  : 'No fue posible consultar las horas disponibles para esa semana.'}
+            </p>
+          </div>
+        )}
         
         {/* Duration Selection */}
         {hora && (
@@ -485,16 +529,16 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
               </button>
               <button
                 type="button"
-                onClick={() => setDuracion(12)}
+                onClick={() => setDuracion(weeklyLimitQuickDuration)}
                 className="py-3 rounded-xl font-medium transition-all"
                 style={{
-                  backgroundColor: duracion === 12 ? '#2F9E44' : 'white',
-                  color: duracion === 12 ? 'white' : '#1F2933',
-                  border: `1px solid ${duracion === 12 ? '#2F9E44' : '#E5E7EB'}`,
+                  backgroundColor: duracion === weeklyLimitQuickDuration ? '#2F9E44' : 'white',
+                  color: duracion === weeklyLimitQuickDuration ? 'white' : '#1F2933',
+                  border: `1px solid ${duracion === weeklyLimitQuickDuration ? '#2F9E44' : '#E5E7EB'}`,
                   fontSize: '14px',
                 }}
               >
-                +12h
+                +{weeklyLimitQuickDuration}h
               </button>
               <input
                 type="text"

@@ -59,5 +59,44 @@ export const confirmationCodeSchema = z
   .refine((val) => val.length === 8, 'El código de confirmación debe tener 8 caracteres')
   .refine((val) => /^[A-Z0-9]{8}$/.test(val), 'Formato de código de confirmación inválido');
 
+const optionalPositiveNumber = z.preprocess(
+  (value) => {
+    if (value === '' || value === null || value === undefined) {
+      return undefined;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? value : parsed;
+    }
+
+    return value;
+  },
+  z.number().positive('Debe ser un número mayor a 0').optional()
+);
+
+export const registrationFormSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(2, 'El nombre completo debe tener al menos 2 caracteres')
+    .max(100, 'El nombre completo debe tener máximo 100 caracteres'),
+  vehicleType: z.enum(['BEV', 'PHEV']),
+  vehicleBrandModel: z
+    .string()
+    .trim()
+    .min(1, 'La marca y modelo son requeridos')
+    .max(100, 'La marca y modelo debe tener máximo 100 caracteres'),
+  batteryCapacityKwh: optionalPositiveNumber,
+  estimatedRangeKm: optionalPositiveNumber,
+  dailyAverageDrivingDistance: z.enum(['0_20', '20_40', '40_60', '60_100', '100_plus']),
+  chargingFrequency: z.enum(['daily', 'every_2_days', 'two_to_three_times_week', 'once_week']),
+  chargingTime220v: z.enum(['1_2', '2_4', '4_6', '6_plus']),
+  chargingTime110v: z.enum(['2_4', '4_6', '6_8', '8_plus']),
+  preferredChargingTime: z.enum(['day', 'night', 'no_preference']).optional(),
+  agreedToFairUsage: z.literal(true),
+});
+
 export type BookingFormSchema = z.infer<typeof bookingFormSchema>;
 export type ConfirmationCodeSchema = z.infer<typeof confirmationCodeSchema>;
+export type RegistrationFormSchema = z.infer<typeof registrationFormSchema>;

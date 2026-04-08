@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createBooking, upsertUser } from '@/lib/firebase/firestore-admin';
 import { bookingFormSchema } from '@/lib/utils/validation';
 import { parseDateInBogotaTimezone, createBogotaDateTime } from '@/lib/utils/dateTime';
+import { validateWeeklyHoursQuota } from '@/lib/services/weekly-booking-quota';
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +51,12 @@ export async function POST(request: NextRequest) {
     
     const endTimeDate = createBogotaDateTime(endDate, endHour, endMinute);
 
+    await validateWeeklyHoursQuota({
+      apartmentNumber,
+      newStartTime: startTimeDate,
+      newEndTime: endTimeDate,
+    });
+
     // Create the booking
     const result = await createBooking({
       apartmentNumber,
@@ -78,7 +85,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating booking:', error);
 
-    if (error instanceof Error && error.message.includes('ya está reservado')) {
+    if (
+      error instanceof Error &&
+      (error.message.includes('ya está reservado') || error.message.includes('Saldo semanal insuficiente'))
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: 409 }
