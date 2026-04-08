@@ -76,11 +76,26 @@ const optionalPositiveNumber = z.preprocess(
 );
 
 export const registrationFormSchema = z.object({
+  apartmentNumber: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1, 'El número de apartamento es requerido')
+    .max(10, 'El número de apartamento debe tener máximo 10 caracteres')
+    .regex(/^[0-9]+-[A-Z0-9]+$/, 'El número de apartamento debe tener formato TORRE-APTO (ej: 1-102B)'),
   fullName: z
     .string()
     .trim()
     .min(2, 'El nombre completo debe tener al menos 2 caracteres')
     .max(100, 'El nombre completo debe tener máximo 100 caracteres'),
+  vehiclePlate: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .min(1, 'La placa del vehículo es requerida')
+    .max(7, 'La placa debe tener máximo 7 caracteres')
+    .regex(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/, 'La placa debe tener el formato ABC-123')
+    .transform((val) => val.replace(/-/g, '')),
   vehicleType: z.enum(['BEV', 'PHEV']),
   vehicleBrandModel: z
     .string()

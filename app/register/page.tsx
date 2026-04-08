@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatApartmentInput } from '@/lib/utils/apartment-input';
 
 type VehicleTypeValue = '' | 'BEV' | 'PHEV';
 type DailyDistanceValue = '' | '0_20' | '20_40' | '40_60' | '60_100' | '100_plus';
@@ -12,7 +13,9 @@ type ChargingTime110vValue = '' | '2_4' | '4_6' | '6_8' | '8_plus';
 type PreferredTimeValue = '' | 'day' | 'night' | 'no_preference';
 
 interface RegistrationFormData {
+  apartmentNumber: string;
   fullName: string;
+  vehiclePlate: string;
   vehicleType: VehicleTypeValue;
   vehicleBrandModel: string;
   batteryCapacityKwh: string;
@@ -26,7 +29,9 @@ interface RegistrationFormData {
 }
 
 const initialFormData: RegistrationFormData = {
+  apartmentNumber: '',
   fullName: '',
+  vehiclePlate: '',
   vehicleType: '',
   vehicleBrandModel: '',
   batteryCapacityKwh: '',
@@ -56,6 +61,20 @@ export default function RegisterPage() {
     }));
   }
 
+  function handleApartmentNumberChange(nextValue: string) {
+    updateField('apartmentNumber', formatApartmentInput(nextValue, formData.apartmentNumber));
+  }
+
+  function handleVehiclePlateChange(nextValue: string) {
+    let value = nextValue.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    if (value.length > 3) {
+      value = `${value.slice(0, 3)}-${value.slice(3, 6)}`;
+    }
+
+    updateField('vehiclePlate', value.slice(0, 7));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
@@ -64,7 +83,9 @@ export default function RegisterPage() {
 
     try {
       const payload = {
+        apartmentNumber: formData.apartmentNumber,
         fullName: formData.fullName,
+        vehiclePlate: formData.vehiclePlate,
         vehicleType: formData.vehicleType,
         vehicleBrandModel: formData.vehicleBrandModel,
         batteryCapacityKwh: formData.batteryCapacityKwh
@@ -93,7 +114,7 @@ export default function RegisterPage() {
       }
 
       setFormData(initialFormData);
-      setSuccessMessage('Registro enviado exitosamente. Gracias por completar la información.');
+      setSuccessMessage('Registro guardado exitosamente. Ya puedes iniciar sesión con tu apartamento.');
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Error al guardar el registro. Por favor intenta nuevamente.');
     } finally {
@@ -101,9 +122,22 @@ export default function RegisterPage() {
     }
   }
 
+  const fieldStyle = {
+    border: '1px solid #E5E7EB',
+    fontSize: '14px',
+    minHeight: '44px',
+    backgroundColor: 'white',
+    color: '#1F2933',
+  };
+
+  const labelStyle = {
+    fontSize: '14px',
+    color: '#1F2933',
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#F6F8F7' }}>
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-3xl">
         <div className="bg-white rounded-2xl p-8" style={{ border: '1px solid #E5E7EB' }}>
           <h1 className="font-semibold mb-2 text-center" style={{ fontSize: '22px', color: '#1F2933' }}>
             Registro de usuario
@@ -131,288 +165,239 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <div>
-              <label 
-                className="block mb-2 font-medium" 
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Nombre completo
-              </label>
-              <input
-                type="text"
-                value={formData.fullName}
-                onChange={(e) => updateField('fullName', e.target.value)}
-                placeholder="Tu nombre completo"
-                required
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              />
+            <div className="p-4 rounded-xl" style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+              <p style={{ fontSize: '13px', color: '#1E3A8A' }}>
+                Para dejar tu usuario listo para reservar, los campos de <strong>apartamento</strong> y <strong>placa</strong> son obligatorios.
+              </p>
             </div>
 
-            <div>
-              <label
-                className="block mb-2 font-medium" 
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Tipo de vehículo
-              </label>
-              <select
-                value={formData.vehicleType}
-                onChange={(e) => updateField('vehicleType', e.target.value as VehicleTypeValue)}
-                required
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="BEV">BEV (100% Eléctrico)</option>
-                <option value="PHEV">PHEV (Híbrido enchufable)</option>
-              </select>
-            </div>
+            <section className="rounded-xl p-5" style={{ border: '1px solid #E5E7EB', backgroundColor: '#FAFAFA' }}>
+              <h2 className="font-semibold mb-1" style={{ fontSize: '16px', color: '#1F2933' }}>1. Datos para reservas</h2>
+              <p className="mb-4" style={{ fontSize: '13px', color: '#6B7280' }}>
+                Esta información se usa para iniciar sesión y autocompletar la reserva.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Apartamento</label>
+                  <input
+                    type="text"
+                    value={formData.apartmentNumber}
+                    onChange={(e) => handleApartmentNumberChange(e.target.value)}
+                    placeholder="1-102B"
+                    required
+                    pattern="^\d+-[A-Za-z0-9]+$"
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  />
+                  <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
+                    Formato: TORRE-APTO (ej: 1-102B)
+                  </p>
+                </div>
 
-            <div>
-              <label 
-                className="block mb-2 font-medium" 
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Marca y modelo del vehículo
-              </label>
-              <input
-                type="text"
-                value={formData.vehicleBrandModel}
-                onChange={(e) => updateField('vehicleBrandModel', e.target.value)}
-                placeholder="Ej: BYD Dolphin, Kia Niro PHEV"
-                required
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              />
-            </div>
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Nombre completo</label>
+                  <input
+                    type="text"
+                    value={formData.fullName}
+                    onChange={(e) => updateField('fullName', e.target.value)}
+                    placeholder="Tu nombre completo"
+                    required
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  />
+                </div>
 
-            <div>
-              <label
-                className="block mb-2 font-medium" 
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Capacidad de batería (kWh) - Opcional
-              </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.1"
-                value={formData.batteryCapacityKwh}
-                onChange={(e) => updateField('batteryCapacityKwh', e.target.value)}
-                placeholder="Ej: 62"
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              />
-            </div>
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Placa del vehículo</label>
+                  <input
+                    type="text"
+                    value={formData.vehiclePlate}
+                    onChange={(e) => handleVehiclePlateChange(e.target.value)}
+                    placeholder="ABC-123"
+                    required
+                    pattern="^[A-Za-z0-9]{3}-[A-Za-z0-9]{3}$"
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  />
+                  <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
+                    Formato: ABC-123
+                  </p>
+                </div>
+              </div>
+            </section>
 
-            <div>
-              <label
-                className="block mb-2 font-medium"
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Autonomía estimada (km) - Opcional
-              </label>
-              <input
-                type="number"
-                inputMode="numeric"
-                min="0"
-                step="1"
-                value={formData.estimatedRangeKm}
-                onChange={(e) => updateField('estimatedRangeKm', e.target.value)}
-                placeholder="Ej: 380"
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              />
-            </div>
+            <section className="rounded-xl p-5" style={{ border: '1px solid #E5E7EB', backgroundColor: '#FAFAFA' }}>
+              <h2 className="font-semibold mb-4" style={{ fontSize: '16px', color: '#1F2933' }}>2. Perfil del vehículo</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Tipo de vehículo</label>
+                  <select
+                    value={formData.vehicleType}
+                    onChange={(e) => updateField('vehicleType', e.target.value as VehicleTypeValue)}
+                    required
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  >
+                    <option value="">Selecciona una opción</option>
+                    <option value="BEV">BEV (100% Eléctrico)</option>
+                    <option value="PHEV">PHEV (Híbrido enchufable)</option>
+                  </select>
+                </div>
 
-            <div>
-              <label
-                className="block mb-2 font-medium"
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Distancia promedio diaria de conducción
-              </label>
-              <select
-                value={formData.dailyAverageDrivingDistance}
-                onChange={(e) => updateField('dailyAverageDrivingDistance', e.target.value as DailyDistanceValue)}
-                required
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="0_20">0-20 km</option>
-                <option value="20_40">20-40 km</option>
-                <option value="40_60">40-60 km</option>
-                <option value="60_100">60-100 km</option>
-                <option value="100_plus">100+ km</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Marca y modelo</label>
+                  <input
+                    type="text"
+                    value={formData.vehicleBrandModel}
+                    onChange={(e) => updateField('vehicleBrandModel', e.target.value)}
+                    placeholder="Ej: BYD Dolphin, Kia Niro PHEV"
+                    required
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  />
+                </div>
 
-            <div>
-              <label
-                className="block mb-2 font-medium"
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Frecuencia de carga
-              </label>
-              <select
-                value={formData.chargingFrequency}
-                onChange={(e) => updateField('chargingFrequency', e.target.value as ChargingFrequencyValue)}
-                required
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="daily">Diaria</option>
-                <option value="every_2_days">Cada 2 días</option>
-                <option value="two_to_three_times_week">2-3 veces por semana</option>
-                <option value="once_week">Una vez por semana</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Capacidad de batería (kWh) - opcional</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.1"
+                    value={formData.batteryCapacityKwh}
+                    onChange={(e) => updateField('batteryCapacityKwh', e.target.value)}
+                    placeholder="Ej: 62"
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  />
+                </div>
 
-            <div>
-              <label
-                className="block mb-2 font-medium"
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Tiempo típico de carga en 220V
-              </label>
-              <select
-                value={formData.chargingTime220v}
-                onChange={(e) => updateField('chargingTime220v', e.target.value as ChargingTime220vValue)}
-                required
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="1_2">1-2 horas</option>
-                <option value="2_4">2-4 horas</option>
-                <option value="4_6">4-6 horas</option>
-                <option value="6_plus">6+ horas</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Autonomía estimada (km) - opcional</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    step="1"
+                    value={formData.estimatedRangeKm}
+                    onChange={(e) => updateField('estimatedRangeKm', e.target.value)}
+                    placeholder="Ej: 380"
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  />
+                </div>
+              </div>
+            </section>
 
-            <div>
-              <label
-                className="block mb-2 font-medium"
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Tiempo típico de carga en 110V
-              </label>
-              <select
-                value={formData.chargingTime110v}
-                onChange={(e) => updateField('chargingTime110v', e.target.value as ChargingTime110vValue)}
-                required
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              >
-                <option value="">Selecciona una opción</option>
-                <option value="2_4">2-4 horas</option>
-                <option value="4_6">4-6 horas</option>
-                <option value="6_8">6-8 horas</option>
-                <option value="8_plus">8+ horas</option>
-              </select>
-            </div>
+            <section className="rounded-xl p-5" style={{ border: '1px solid #E5E7EB', backgroundColor: '#FAFAFA' }}>
+              <h2 className="font-semibold mb-4" style={{ fontSize: '16px', color: '#1F2933' }}>3. Hábitos de carga</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Distancia promedio diaria</label>
+                  <select
+                    value={formData.dailyAverageDrivingDistance}
+                    onChange={(e) => updateField('dailyAverageDrivingDistance', e.target.value as DailyDistanceValue)}
+                    required
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  >
+                    <option value="">Selecciona una opción</option>
+                    <option value="0_20">0-20 km</option>
+                    <option value="20_40">20-40 km</option>
+                    <option value="40_60">40-60 km</option>
+                    <option value="60_100">60-100 km</option>
+                    <option value="100_plus">100+ km</option>
+                  </select>
+                </div>
 
-            <div>
-              <label
-                className="block mb-2 font-medium"
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Horario preferido para cargar (opcional)
-              </label>
-              <select
-                value={formData.preferredChargingTime}
-                onChange={(e) => updateField('preferredChargingTime', e.target.value as PreferredTimeValue)}
-                className="w-full px-4 py-3 rounded-xl transition-colors"
-                style={{
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px',
-                  minHeight: '44px',
-                  backgroundColor: 'white',
-                  color: '#1F2933'
-                }}
-              >
-                <option value="">Sin seleccionar</option>
-                <option value="day">Día</option>
-                <option value="night">Noche</option>
-                <option value="no_preference">Sin preferencia</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Frecuencia de carga</label>
+                  <select
+                    value={formData.chargingFrequency}
+                    onChange={(e) => updateField('chargingFrequency', e.target.value as ChargingFrequencyValue)}
+                    required
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  >
+                    <option value="">Selecciona una opción</option>
+                    <option value="daily">Diaria</option>
+                    <option value="every_2_days">Cada 2 días</option>
+                    <option value="two_to_three_times_week">2-3 veces por semana</option>
+                    <option value="once_week">Una vez por semana</option>
+                  </select>
+                </div>
 
-            <div className="flex items-start gap-3">
-              <input
-                id="fair-usage-agreement"
-                type="checkbox"
-                checked={formData.agreedToFairUsage}
-                onChange={(e) => updateField('agreedToFairUsage', e.target.checked)}
-                required
-                className="mt-1"
-              />
-              <label
-                htmlFor="fair-usage-agreement"
-                className="font-medium"
-                style={{ fontSize: '14px', color: '#1F2933' }}
-              >
-                Acepto las reglas de uso justo para asegurar acceso equitativo para todos los residentes.
-              </label>
-            </div>
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Tiempo típico en 220V</label>
+                  <select
+                    value={formData.chargingTime220v}
+                    onChange={(e) => updateField('chargingTime220v', e.target.value as ChargingTime220vValue)}
+                    required
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  >
+                    <option value="">Selecciona una opción</option>
+                    <option value="1_2">1-2 horas</option>
+                    <option value="2_4">2-4 horas</option>
+                    <option value="4_6">4-6 horas</option>
+                    <option value="6_plus">6+ horas</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block mb-2 font-medium" style={labelStyle}>Tiempo típico en 110V</label>
+                  <select
+                    value={formData.chargingTime110v}
+                    onChange={(e) => updateField('chargingTime110v', e.target.value as ChargingTime110vValue)}
+                    required
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  >
+                    <option value="">Selecciona una opción</option>
+                    <option value="2_4">2-4 horas</option>
+                    <option value="4_6">4-6 horas</option>
+                    <option value="6_8">6-8 horas</option>
+                    <option value="8_plus">8+ horas</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block mb-2 font-medium" style={labelStyle}>Horario preferido para cargar (opcional)</label>
+                  <select
+                    value={formData.preferredChargingTime}
+                    onChange={(e) => updateField('preferredChargingTime', e.target.value as PreferredTimeValue)}
+                    className="w-full px-4 py-3 rounded-xl transition-colors"
+                    style={fieldStyle}
+                  >
+                    <option value="">Sin seleccionar</option>
+                    <option value="day">Día</option>
+                    <option value="night">Noche</option>
+                    <option value="no_preference">Sin preferencia</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl p-5" style={{ border: '1px solid #E5E7EB', backgroundColor: '#FAFAFA' }}>
+              <h2 className="font-semibold mb-3" style={{ fontSize: '16px', color: '#1F2933' }}>4. Confirmación</h2>
+              <div className="flex items-start gap-3">
+                <input
+                  id="fair-usage-agreement"
+                  type="checkbox"
+                  checked={formData.agreedToFairUsage}
+                  onChange={(e) => updateField('agreedToFairUsage', e.target.checked)}
+                  required
+                  className="mt-1"
+                />
+                <label
+                  htmlFor="fair-usage-agreement"
+                  className="font-medium"
+                  style={{ fontSize: '14px', color: '#1F2933' }}
+                >
+                  Acepto las reglas de uso justo para asegurar acceso equitativo para todos los residentes.
+                </label>
+              </div>
+            </section>
 
             <button
               type="submit"
@@ -430,20 +415,12 @@ export default function RegisterPage() {
             </button>
 
             <div className="text-center flex items-center justify-center gap-4">
-              <button
-                type="button"
-                onClick={() => router.push('/')}
-                className="font-medium"
-                style={{ fontSize: '14px', color: '#2F9E44' }}
-              >
-                Ir al inicio
-              </button>
               <Link
-                href="/book"
+                href="/login"
                 className="font-medium"
                 style={{ fontSize: '14px', color: '#2F9E44' }}
               >
-                Ir a reservas
+                Ir a iniciar sesión
               </Link>
             </div>
           </form>

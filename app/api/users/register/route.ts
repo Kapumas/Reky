@@ -21,8 +21,11 @@ export async function POST(request: NextRequest) {
     const data = validation.data;
     const normalizedMetrics = normalizeRegistrationMetrics(data);
 
-    const docRef = await adminDb.collection(USERS_COLLECTION).add({
+    const normalizedApartment = data.apartmentNumber.trim().toUpperCase();
+    const userPayload = {
+      apartmentNumber: normalizedApartment,
       fullName: data.fullName,
+      vehiclePlate: data.vehiclePlate,
       vehicleType: data.vehicleType,
       vehicleBrandModel: data.vehicleBrandModel,
       batteryCapacityKwh: data.batteryCapacityKwh ?? null,
@@ -34,14 +37,33 @@ export async function POST(request: NextRequest) {
       preferredChargingTime: data.preferredChargingTime ?? null,
       agreedToFairUsage: data.agreedToFairUsage,
       ...normalizedMetrics,
-      createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
+
+    const existingSnapshot = await adminDb
+      .collection(USERS_COLLECTION)
+      .where('apartmentNumber', '==', normalizedApartment)
+      .limit(1)
+      .get();
+
+    let userId = '';
+
+    if (existingSnapshot.empty) {
+      const docRef = await adminDb.collection(USERS_COLLECTION).add({
+        ...userPayload,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      userId = docRef.id;
+    } else {
+      const existingDoc = existingSnapshot.docs[0];
+      await adminDb.collection(USERS_COLLECTION).doc(existingDoc.id).update(userPayload);
+      userId = existingDoc.id;
+    }
 
     return NextResponse.json(
       {
         success: true,
-        userId: docRef.id,
+        userId,
         normalized: {
           weekly_sessions: normalizedMetrics.weekly_sessions,
           avg_hours_per_session: normalizedMetrics.avg_hours_per_session,
