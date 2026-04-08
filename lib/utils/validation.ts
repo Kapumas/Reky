@@ -10,9 +10,9 @@ export const bookingFormSchema = z.object({
     .regex(/^\d+-[A-Z0-9]+$/, 'El número de apartamento debe tener formato TORRE-APTO (ej: 1-102B)'),
   fullName: z
     .string()
+    .trim()
     .min(2, 'El nombre completo debe tener al menos 2 caracteres')
-    .max(100, 'El nombre completo debe tener máximo 100 caracteres')
-    .regex(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s'-]+$/, 'El nombre solo puede contener letras, espacios, guiones y apóstrofes'),
+    .max(100, 'El nombre completo debe tener máximo 100 caracteres'),
   vehiclePlate: z
     .string()
     .min(1, 'La placa del vehículo es requerida')
