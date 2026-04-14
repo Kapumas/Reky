@@ -8,6 +8,7 @@ import { ActiveBookingCard } from '@/components/home/ActiveBookingCard';
 import { UpcomingBookings } from '@/components/home/UpcomingBookings';
 import { SessionGuard } from '@/components/auth/SessionGuard';
 import { useUserSession } from '@/hooks/useUserSession';
+import { formatDateForInput } from '@/lib/utils/dateTime';
 
 interface UsageResponse {
   usage: {
@@ -69,7 +70,7 @@ export default function HomePage() {
 
   function handleOpenBooking(date?: Date) {
     if (date) {
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = formatDateForInput(date);
       router.push(`/book?date=${dateStr}`);
     } else {
       router.push('/book');

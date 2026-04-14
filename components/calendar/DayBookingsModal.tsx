@@ -166,7 +166,7 @@ export function DayBookingsModal({ isOpen, onClose, selectedDate }: DayBookingsM
         <div className="sticky bottom-0 bg-white px-6 py-4" style={{ borderTop: '1px solid #E5E7EB' }}>
           <button
             onClick={() => {
-              const dateStr = selectedDate.toISOString().split('T')[0];
+              const dateStr = formatDateForInput(selectedDate);
               router.push(`/book?date=${dateStr}`);
             }}
             className="w-full rounded-xl font-semibold transition-all flex items-center justify-center gap-2"

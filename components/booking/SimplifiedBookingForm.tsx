@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatDateForInput, formatDateWithDayName, formatTimeToAMPM, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
+import { createBogotaDateTime, formatDateForInput, formatDateWithDayName, formatTimeToAMPM, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
 import { useUserSession } from '@/hooks/useUserSession';
 
 interface SimplifiedBookingFormProps {
@@ -13,6 +13,15 @@ interface SimplifiedBookingFormProps {
 interface DayBookingItem {
   startTime: string;
   endTime: string;
+  fullName?: string;
+}
+
+interface RangeConflictItem {
+  key: string;
+  startIso: string;
+  fullName: string;
+  displayDate: string;
+  displayTimeRange: string;
 }
 
 interface WeeklyUsageApiResponse {
@@ -23,6 +32,23 @@ interface WeeklyUsageApiResponse {
     };
   };
 }
+
+const HOUR_IN_MS = 60 * 60 * 1000;
+
+const getDateWithOffset = (date: string, offsetDays: number): string => {
+  const [year, month, day] = date.split('-').map(Number);
+  const baseDate = new Date(Date.UTC(year, month - 1, day));
+  baseDate.setUTCDate(baseDate.getUTCDate() + offsetDays);
+  return `${baseDate.getUTCFullYear()}-${String(baseDate.getUTCMonth() + 1).padStart(2, '0')}-${String(baseDate.getUTCDate()).padStart(2, '0')}`;
+};
+
+const extractDateAndTimeFromISO = (isoDateTime: string): { date: string; time: string } => {
+  const [datePart = '', timePart = ''] = isoDateTime.split('T');
+  return {
+    date: datePart,
+    time: timePart.slice(0, 5),
+  };
+};
 
 export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: SimplifiedBookingFormProps) {
   const router = useRouter();
@@ -40,6 +66,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [userFound, setUserFound] = useState(false);
   const [bookedHours, setBookedHours] = useState<string[]>([]);
+  const [nearbyBookings, setNearbyBookings] = useState<DayBookingItem[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [selectedWeekRemainingHours, setSelectedWeekRemainingHours] = useState<number | null>(null);
   const [isLoadingWeekHours, setIsLoadingWeekHours] = useState(false);
@@ -81,6 +108,58 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : false;
   const maxDuracion = 24; // Always 24 hours max
   const weeklyLimitQuickDuration = Math.max(1, Math.min(maxDuracion, Math.floor(weeklyHoursLimit)));
+
+  const overlappingBookings = useMemo<RangeConflictItem[]>(() => {
+    if (!fecha || !hora || !duracion || nearbyBookings.length === 0) {
+      return [];
+    }
+
+    const selectedDurationHours = typeof duracion === 'number' ? duracion : Number(duracion);
+    if (!selectedDurationHours || selectedDurationHours < 1) {
+      return [];
+    }
+
+    const [startHour, startMinute] = hora.split(':').map(Number);
+    if (Number.isNaN(startHour) || Number.isNaN(startMinute)) {
+      return [];
+    }
+
+    const selectedStartTime = createBogotaDateTime(fecha, startHour, startMinute);
+    const selectedEndTime = new Date(selectedStartTime.getTime() + selectedDurationHours * HOUR_IN_MS);
+
+    return nearbyBookings
+      .map((booking, index) => {
+        const bookingStart = new Date(booking.startTime);
+        const bookingEnd = new Date(booking.endTime);
+
+        const hasOverlap = selectedStartTime < bookingEnd && selectedEndTime > bookingStart;
+        if (!hasOverlap) {
+          return null;
+        }
+
+        const { date: bookingStartDate, time: bookingStartTime } = extractDateAndTimeFromISO(booking.startTime);
+        const { date: bookingEndDate, time: bookingEndTime } = extractDateAndTimeFromISO(booking.endTime);
+
+        if (!bookingStartDate || !bookingEndDate || !bookingStartTime || !bookingEndTime) {
+          return null;
+        }
+
+        const displayDate =
+          bookingStartDate === bookingEndDate
+            ? formatDateWithDayName(parseDateInBogotaTimezone(bookingStartDate))
+            : `${formatDateWithDayName(parseDateInBogotaTimezone(bookingStartDate))} → ${formatDateWithDayName(parseDateInBogotaTimezone(bookingEndDate))}`;
+
+        return {
+          key: `${booking.startTime}-${booking.endTime}-${index}`,
+          startIso: booking.startTime,
+          fullName: booking.fullName?.trim() || 'Usuario sin nombre',
+          displayDate,
+          displayTimeRange: `${formatTimeToAMPM(bookingStartTime)} - ${formatTimeToAMPM(bookingEndTime)}`,
+        };
+      })
+      .filter((booking): booking is RangeConflictItem => booking !== null)
+      .sort((a, b) => new Date(a.startIso).getTime() - new Date(b.startIso).getTime());
+  }, [fecha, hora, duracion, nearbyBookings]);
 
   // Format vehicle plate with mask ABC-123
   const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,87 +209,61 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const fetchBookingsForDate = React.useCallback(async (date: string) => {
     setIsLoadingBookings(true);
     try {
-      // Fetch bookings for selected date
-      const response = await fetch(`/api/bookings/day/${date}`);
-      
-      // Also fetch bookings from previous day (to check for overnight bookings)
-      const [year, month, day] = date.split('-').map(Number);
-      const previousDate = new Date(year, month - 1, day - 1);
-      const previousDateStr = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, '0')}-${String(previousDate.getDate()).padStart(2, '0')}`;
-      const previousResponse = await fetch(`/api/bookings/day/${previousDateStr}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        const occupiedHours: string[] = [];
-        
-        // Process bookings from selected date
-        data.bookings.forEach((booking: DayBookingItem) => {
-          const startTime = new Date(booking.startTime);
-          const endTime = new Date(booking.endTime);
-          const startHour = startTime.getHours();
-          const endHour = endTime.getHours();
-          
-          // Check if booking crosses midnight based on hours
-          // If end hour is less than start hour, it means it goes to next day
-          const crossesMidnight = endHour < startHour || endTime <= startTime;
-          
-          if (crossesMidnight) {
-            // Booking crosses midnight - block from start hour to 23:59
-            for (let hour = startHour; hour < 24; hour++) {
-              const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-              if (!occupiedHours.includes(hourStr)) {
-                occupiedHours.push(hourStr);
-              }
-            }
-          } else {
-            // Same day booking
-            for (let hour = startHour; hour < endHour || (hour === endHour && endTime.getMinutes() > 0); hour++) {
-              const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-              if (!occupiedHours.includes(hourStr)) {
-                occupiedHours.push(hourStr);
-              }
-            }
+      const previousDateStr = getDateWithOffset(date, -1);
+      const nextDateStr = getDateWithOffset(date, 1);
+
+      const [selectedDateResponse, previousDateResponse, nextDateResponse] = await Promise.all([
+        fetch(`/api/bookings/day/${date}`),
+        fetch(`/api/bookings/day/${previousDateStr}`),
+        fetch(`/api/bookings/day/${nextDateStr}`),
+      ]);
+
+      const selectedDateData = selectedDateResponse.ok ? await selectedDateResponse.json() : { bookings: [] };
+      const previousDateData = previousDateResponse.ok ? await previousDateResponse.json() : { bookings: [] };
+      const nextDateData = nextDateResponse.ok ? await nextDateResponse.json() : { bookings: [] };
+
+      const selectedBookings: DayBookingItem[] = selectedDateData.bookings ?? [];
+      const previousBookings: DayBookingItem[] = previousDateData.bookings ?? [];
+      const nextBookings: DayBookingItem[] = nextDateData.bookings ?? [];
+
+      setNearbyBookings([...previousBookings, ...selectedBookings, ...nextBookings]);
+
+      const occupiedHours = new Set<string>();
+      const selectedDayStart = createBogotaDateTime(date, 0, 0);
+      const selectedDayEnd = createBogotaDateTime(nextDateStr, 0, 0);
+
+      [...selectedBookings, ...previousBookings].forEach((booking) => {
+        const bookingStart = new Date(booking.startTime);
+        const bookingEnd = new Date(booking.endTime);
+
+        const overlapStart = bookingStart > selectedDayStart ? bookingStart : selectedDayStart;
+        const overlapEnd = bookingEnd < selectedDayEnd ? bookingEnd : selectedDayEnd;
+
+        if (overlapStart >= overlapEnd) {
+          return;
+        }
+
+        for (let hour = 0; hour < 24; hour++) {
+          const slotStart = new Date(selectedDayStart.getTime() + hour * HOUR_IN_MS);
+          const slotEnd = new Date(slotStart.getTime() + HOUR_IN_MS);
+
+          if (overlapStart < slotEnd && overlapEnd > slotStart) {
+            occupiedHours.add(`${hour.toString().padStart(2, '0')}:00`);
           }
-        });
-        
-        // Process bookings from previous day that might extend to selected date
-        if (previousResponse.ok) {
-          const previousData = await previousResponse.json();
-          
-          previousData.bookings.forEach((booking: DayBookingItem) => {
-            const startTime = new Date(booking.startTime);
-            const endTime = new Date(booking.endTime);
-            const startHour = startTime.getHours();
-            const endHour = endTime.getHours();
-            
-            // Check if this booking crosses midnight (end hour < start hour or endTime <= startTime)
-            const crossesMidnight = endHour < startHour || endTime <= startTime;
-            
-            if (crossesMidnight) {
-              // Block from 00:00 to end hour on selected date
-              for (let hour = 0; hour < endHour || (hour === endHour && endTime.getMinutes() > 0); hour++) {
-                const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-                if (!occupiedHours.includes(hourStr)) {
-                  occupiedHours.push(hourStr);
-                }
-              }
-            }
-          });
         }
-        
-        setBookedHours(occupiedHours);
-        
-        // Clear selected hour if it's now booked
-        if (hora && occupiedHours.includes(hora)) {
-          setHora('');
-          setDuracion('');
-        }
-      } else {
-        setBookedHours([]);
+      });
+
+      const occupiedHoursList = Array.from(occupiedHours).sort();
+      setBookedHours(occupiedHoursList);
+
+      if (hora && occupiedHours.has(hora)) {
+        setHora('');
+        setDuracion('');
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
       setBookedHours([]);
+      setNearbyBookings([]);
     } finally {
       setIsLoadingBookings(false);
     }
@@ -268,6 +321,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
       }
     } else {
       setBookedHours([]);
+      setNearbyBookings([]);
       setSelectedWeekRemainingHours(null);
     }
   }, [fecha, torre, fetchBookingsForDate, fetchWeekRemainingHours]);
@@ -292,6 +346,12 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     
     if (duracion < 1) {
       setErrorMessage('La duración mínima es de 1 hora');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (overlappingBookings.length > 0) {
+      setErrorMessage('La reserva se cruza con una ya existente en el rango seleccionado.');
       setIsSubmitting(false);
       return;
     }
@@ -588,6 +648,27 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
             <p style={{ fontSize: '12px', color: '#6B7280' }}>
               Duración: {duracion} {duracion === 1 ? 'hora' : 'horas'}
             </p>
+          </div>
+        )}
+
+        {fecha && hora && duracion && overlappingBookings.length > 0 && (
+          <div
+            className="mt-4 p-4 rounded-xl"
+            style={{
+              backgroundColor: '#FEF2F2',
+              border: '1px solid #FECACA',
+            }}
+          >
+            <p style={{ fontSize: '13px', color: '#991B1B', fontWeight: '600' }}>
+              Esta reserva se cruza con una ya existente.
+            </p>
+            <ul className="mt-2 space-y-1" style={{ fontSize: '12px', color: '#B91C1C' }}>
+              {overlappingBookings.map((booking) => (
+                <li key={booking.key}>
+                  {booking.fullName} · {booking.displayDate} · {booking.displayTimeRange}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

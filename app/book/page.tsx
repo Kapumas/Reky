@@ -5,13 +5,14 @@ import { ArrowLeft } from 'lucide-react';
 import { SimplifiedBookingForm } from '@/components/booking/SimplifiedBookingForm';
 import { SessionGuard } from '@/components/auth/SessionGuard';
 import { Suspense } from 'react';
+import { parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
 
 function BookingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date');
   
-  const preSelectedDate = dateParam ? new Date(dateParam) : undefined;
+  const preSelectedDate = dateParam ? parseDateInBogotaTimezone(dateParam) : undefined;
 
   const handleSuccess = () => {
     // The form will redirect to confirmation page
