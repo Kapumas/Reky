@@ -51,12 +51,17 @@ export async function POST(request: NextRequest) {
     if (existingSnapshot.empty) {
       const docRef = await adminDb.collection(USERS_COLLECTION).add({
         ...userPayload,
+        status: 'active',
         createdAt: FieldValue.serverTimestamp(),
       });
       userId = docRef.id;
     } else {
       const existingDoc = existingSnapshot.docs[0];
-      await adminDb.collection(USERS_COLLECTION).doc(existingDoc.id).update(userPayload);
+      const existingStatus = existingDoc.get('status');
+      await adminDb.collection(USERS_COLLECTION).doc(existingDoc.id).update({
+        ...userPayload,
+        ...(existingStatus ? {} : { status: 'active' }),
+      });
       userId = existingDoc.id;
     }
 

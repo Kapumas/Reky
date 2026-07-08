@@ -265,6 +265,10 @@ export async function upsertUser(userData: UserInput): Promise<User> {
       fullName: userData.fullName,
       updatedAt: FieldValue.serverTimestamp(),
     };
+
+    if (!existingUser.status) {
+      updateData.status = 'active';
+    }
     
     if (userData.email !== undefined) {
       updateData.email = userData.email;
@@ -285,6 +289,7 @@ export async function upsertUser(userData: UserInput): Promise<User> {
     const newUserData: Record<string, unknown> = {
       apartmentNumber: userData.apartmentNumber,
       fullName: userData.fullName,
+      status: 'active',
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };

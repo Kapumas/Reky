@@ -8,7 +8,6 @@ import {
   serverTimestamp,
   updateDoc,
   doc,
-  setDoc,
 } from 'firebase/firestore';
 import { db } from './config';
 import { Booking, BookingInput, BookingResponse } from '@/types/booking';
@@ -66,7 +65,7 @@ export async function createBooking(
   const confirmationCode = generateConfirmationCode();
 
   // Create the booking
-  const bookingRef = await addDoc(collection(db, BOOKINGS_COLLECTION), {
+  await addDoc(collection(db, BOOKINGS_COLLECTION), {
     confirmationCode,
     apartmentNumber: bookingData.apartmentNumber,
     fullName: bookingData.fullName,
@@ -248,11 +247,17 @@ export async function upsertUser(userData: UserInput): Promise<User> {
   if (existingUser) {
     // Update existing user
     const userRef = doc(db, USERS_COLLECTION, existingUser.id);
-    await updateDoc(userRef, {
+    const updateData: Record<string, unknown> = {
       fullName: userData.fullName,
       email: userData.email || existingUser.email,
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    if (!existingUser.status) {
+      updateData.status = 'active';
+    }
+
+    await updateDoc(userRef, updateData);
 
     // Fetch updated user
     const updatedSnapshot = await getDocs(
@@ -265,10 +270,11 @@ export async function upsertUser(userData: UserInput): Promise<User> {
     return { id: updatedDoc.id, ...updatedDoc.data() } as User;
   } else {
     // Create new user
-    const userRef = await addDoc(collection(db, USERS_COLLECTION), {
+    await addDoc(collection(db, USERS_COLLECTION), {
       apartmentNumber: userData.apartmentNumber,
       fullName: userData.fullName,
       email: userData.email,
+      status: 'active',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
