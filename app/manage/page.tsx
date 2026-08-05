@@ -85,11 +85,33 @@ function ManagePageContent() {
   // Group bookings by date
   const groupedBookings = useMemo(() => groupBookingsByDate(bookings), [bookings]);
   
-  // Separate active and cancelled groups
+  // Separate future, past, and cancelled bookings
+  const now = new Date();
   const activeGroups = groupedBookings.filter(g => g.activeCount > 0);
+  const futureGroups = activeGroups
+    .map(group => {
+      const futureBookings = group.bookings.filter(
+        booking => booking.status === 'active' && new Date(booking.startTime) > now
+      );
+      return futureBookings.length > 0
+        ? { ...group, bookings: futureBookings, activeCount: futureBookings.length, cancelledCount: 0 }
+        : null;
+    })
+    .filter((group): group is NonNullable<typeof group> => group !== null);
+  const pastGroups = activeGroups
+    .map(group => {
+      const pastBookings = group.bookings.filter(
+        booking => booking.status === 'active' && new Date(booking.startTime) <= now
+      );
+      return pastBookings.length > 0
+        ? { ...group, bookings: pastBookings, activeCount: pastBookings.length, cancelledCount: 0 }
+        : null;
+    })
+    .filter((group): group is NonNullable<typeof group> => group !== null);
   const cancelledGroups = groupedBookings.filter(g => g.activeCount === 0 && g.cancelledCount > 0);
   
-  const totalActive = bookings.filter(b => b.status === 'active').length;
+  const totalFuture = bookings.filter(b => b.status === 'active' && new Date(b.startTime) > now).length;
+  const totalPast = bookings.filter(b => b.status === 'active' && new Date(b.startTime) <= now).length;
   const totalCancelled = bookings.filter(b => b.status === 'cancelled').length;
 
   return (
@@ -169,9 +191,14 @@ function ManagePageContent() {
                 {apartmentNumber}
               </p>
               <div className="flex gap-4 text-sm">
-                {totalActive > 0 && (
+                {totalFuture > 0 && (
                   <span style={{ color: '#2F9E44', fontWeight: '500' }}>
-                    {totalActive} activa{totalActive > 1 ? 's' : ''}
+                    {totalFuture} futura{totalFuture > 1 ? 's' : ''}
+                  </span>
+                )}
+                {totalPast > 0 && (
+                  <span style={{ color: '#6B7280', fontWeight: '500' }}>
+                    {totalPast} pasada{totalPast > 1 ? 's' : ''}
                   </span>
                 )}
                 {totalCancelled > 0 && (
@@ -182,18 +209,40 @@ function ManagePageContent() {
               </div>
             </div>
 
-            {/* Active Bookings by Day */}
-            {activeGroups.length > 0 && (
+            {/* Future Bookings by Day */}
+            {futureGroups.length > 0 && (
               <div className="space-y-3">
                 <h2 className="font-semibold px-1" style={{ fontSize: '16px', color: '#1F2933' }}>
-                  Reservas Activas
+                  Reservas Futuras
                 </h2>
-                {activeGroups.map((group) => (
+                {futureGroups.map((group) => (
                   <DayBookingsGroup
-                    key={group.dateString}
+                    key={`future-${group.dateString}`}
                     group={group}
                     onCancelBooking={handleBookingCancelled}
                     onEditBooking={handleBookingUpdated}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Past Bookings by Day */}
+            {pastGroups.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold px-1" style={{ fontSize: '16px', color: '#6B7280' }}>
+                  Reservas Pasadas
+                </h2>
+                <div
+                  className="p-3 rounded-xl"
+                  style={{ backgroundColor: '#FEF3C7', color: '#92400E', fontSize: '13px' }}
+                >
+                  Las reservas pasadas no se pueden editar ni cancelar.
+                </div>
+                {pastGroups.map((group) => (
+                  <DayBookingsGroup
+                    key={`past-${group.dateString}`}
+                    group={group}
+                    onCancelBooking={handleBookingCancelled}
                   />
                 ))}
               </div>

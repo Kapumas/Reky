@@ -6,7 +6,27 @@ import { parseTimeSlot } from '../utils/dateTime';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const BOOKINGS_COLLECTION = 'bookings';
+const AUDIT_COLLECTION = 'bookingAudit';
 const USERS_COLLECTION = 'users';
+
+type BookingAuditAction = 'update' | 'cancel';
+
+async function createBookingAuditLog(data: {
+  action: BookingAuditAction;
+  ipAddress: string;
+  booking: Booking;
+  details?: Record<string, unknown>;
+}): Promise<void> {
+  await adminDb.collection(AUDIT_COLLECTION).add({
+    action: data.action,
+    performedAt: FieldValue.serverTimestamp(),
+    ipAddress: data.ipAddress,
+    bookingId: data.booking.id,
+    confirmationCode: data.booking.confirmationCode,
+    apartmentNumber: data.booking.apartmentNumber,
+    details: data.details ?? {},
+  });
+}
 
 /**
  * Check if a time slot is available for booking (Admin SDK)
@@ -99,7 +119,8 @@ export async function updateBooking(
     timeSlot?: string;
     startTime?: Date;
     endTime?: Date;
-  }
+  },
+  ipAddress: string
 ): Promise<Booking> {
   const booking = await getBookingByCode(confirmationCode);
 
@@ -109,6 +130,11 @@ export async function updateBooking(
 
   if (booking.status === 'cancelled') {
     throw new Error('No se puede editar una reserva cancelada');
+  }
+
+  const bookingStartTime = booking.startTime.toDate();
+  if (bookingStartTime <= new Date()) {
+    throw new Error('No se pueden editar reservas pasadas o en curso');
   }
 
   // Check for conflicts if date/time is being updated
@@ -154,13 +180,29 @@ export async function updateBooking(
     .doc(booking.id)
     .get();
 
-  return { id: updatedDoc.id, ...updatedDoc.data() } as Booking;
+  const updatedBooking = { id: updatedDoc.id, ...updatedDoc.data() } as Booking;
+  await createBookingAuditLog({
+    action: 'update',
+    ipAddress,
+    booking,
+    details: {
+      previousBookingDate: booking.bookingDate.toDate().toISOString(),
+      previousTimeSlot: booking.timeSlot,
+      newBookingDate: updateData.bookingDate?.toISOString(),
+      newTimeSlot: updateData.timeSlot,
+    },
+  });
+
+  return updatedBooking;
 }
 
 /**
  * Cancel a booking (Admin SDK)
  */
-export async function cancelBooking(confirmationCode: string): Promise<void> {
+export async function cancelBooking(
+  confirmationCode: string,
+  ipAddress: string
+): Promise<void> {
   const booking = await getBookingByCode(confirmationCode);
 
   if (!booking) {
@@ -171,6 +213,10 @@ export async function cancelBooking(confirmationCode: string): Promise<void> {
     throw new Error('Esta reserva ya ha sido cancelada');
   }
 
+  if (booking.startTime.toDate() <= new Date()) {
+    throw new Error('No se pueden cancelar reservas pasadas o en curso');
+  }
+
   await adminDb
     .collection(BOOKINGS_COLLECTION)
     .doc(booking.id)
@@ -178,6 +224,16 @@ export async function cancelBooking(confirmationCode: string): Promise<void> {
       status: 'cancelled',
       cancelledAt: FieldValue.serverTimestamp(),
     });
+
+  await createBookingAuditLog({
+    action: 'cancel',
+    ipAddress,
+    booking,
+    details: {
+      bookingDate: booking.bookingDate.toDate().toISOString(),
+      timeSlot: booking.timeSlot,
+    },
+  });
 }
 
 /**

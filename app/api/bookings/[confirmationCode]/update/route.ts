@@ -10,6 +10,13 @@ const updateBookingSchema = z.object({
   endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Formato de hora inválido'),
 });
 
+function getClientIp(request: NextRequest): string {
+  return request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+    || request.headers.get('x-real-ip')
+    || request.headers.get('cf-connecting-ip')
+    || 'unknown';
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ confirmationCode: string }> }
@@ -69,7 +76,7 @@ export async function PUT(
       timeSlot,
       startTime: startDateTime,
       endTime: endDateTime,
-    });
+    }, getClientIp(request));
 
     return NextResponse.json({
       success: true,

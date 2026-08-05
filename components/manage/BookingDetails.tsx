@@ -28,6 +28,7 @@ export function BookingDetails({ booking, onCancel }: BookingDetailsProps) {
 
   const bookingDate = new Date(booking.bookingDate);
   const isActive = booking.status === 'active';
+  const isCancellable = isActive && new Date(booking.startTime) > new Date();
 
   async function handleCancel() {
     setIsCancelling(true);
@@ -125,7 +126,7 @@ export function BookingDetails({ booking, onCancel }: BookingDetailsProps) {
         </div>
       )}
 
-      {isActive && !showCancelConfirm && (
+      {isCancellable && !showCancelConfirm && (
         <button
           onClick={() => setShowCancelConfirm(true)}
           className="w-full rounded-xl font-medium transition-all mt-4"
@@ -141,7 +142,7 @@ export function BookingDetails({ booking, onCancel }: BookingDetailsProps) {
         </button>
       )}
 
-      {isActive && showCancelConfirm && (
+      {isCancellable && showCancelConfirm && (
         <div className="mt-4 p-4 rounded-xl" style={{ backgroundColor: '#FEF3C7', border: '1px solid #FCD34D' }}>
           <p className="font-medium mb-3" style={{ fontSize: '14px', color: '#92400E' }}>
             ¿Estás seguro?

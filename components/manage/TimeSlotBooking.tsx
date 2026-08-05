@@ -19,6 +19,8 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
   const [errorMessage, setErrorMessage] = useState('');
 
   const isActive = booking.status === 'active';
+  const isCancellable = isActive && new Date(booking.startTime) > new Date();
+  const isEditable = isCancellable;
 
   function handleEditSuccess() {
     setShowEditModal(false);
@@ -119,6 +121,7 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
         {/* Right side: Action Buttons stacked vertically */}
         {isActive && !showCancelConfirm && (
           <div className="flex flex-col gap-2 flex-shrink-0">
+            {isEditable && (
             <button
               onClick={() => setShowEditModal(true)}
               className="px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center justify-center gap-1.5"
@@ -133,6 +136,8 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
               <Edit2 className="h-3.5 w-3.5" />
               Editar
             </button>
+            )}
+            {isCancellable && (
             <button
               onClick={() => setShowCancelConfirm(true)}
               className="px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center justify-center gap-1.5"
@@ -146,6 +151,7 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
             >
               Cancelar
             </button>
+            )}
           </div>
         )}
       </div>
