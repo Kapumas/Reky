@@ -3,8 +3,10 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { addDays } from 'date-fns';
 import { SessionGuard } from '@/components/auth/SessionGuard';
-import { formatDateForDisplay, formatTimeSlotForDisplay, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
+import { AddToCalendarButton } from '@/components/ui/AddToCalendarButton';
+import { createBogotaDateTime, formatDateForDisplay, formatDateForInput, formatTimeSlotForDisplay, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
 import { CheckCircle, Calendar, Clock, Home, User, Car } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +19,7 @@ function ConfirmationContent() {
   const vehiclePlate = searchParams.get('vehiclePlate');
   const date = searchParams.get('date');
   const timeSlot = searchParams.get('timeSlot');
+  const confirmationCode = searchParams.get('confirmationCode');
 
   if (!apartment || !name || !date || !timeSlot) {
     return (
@@ -48,6 +51,12 @@ function ConfirmationContent() {
   }
 
   const bookingDate = parseDateInBogotaTimezone(date);
+  const [startTime, endTime] = timeSlot.split('-');
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  const calendarStartTime = createBogotaDateTime(date, startHour, startMinute);
+  const calendarEndDate = endTime <= startTime ? formatDateForInput(addDays(bookingDate, 1)) : date;
+  const calendarEndTime = createBogotaDateTime(calendarEndDate, endHour, endMinute);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F6F8F7' }}>
@@ -122,6 +131,16 @@ function ConfirmationContent() {
         </div>
 
         <div className="space-y-3">
+          <AddToCalendarButton
+            event={{
+              uid: confirmationCode || `${apartment}-${date}-${timeSlot}`,
+              title: 'Reserva de turno de carga',
+              startTime: calendarStartTime,
+              endTime: calendarEndTime,
+              description: `Reserva de ${name} en el apartamento ${apartment}${vehiclePlate ? `\nPlaca: ${vehiclePlate}` : ''}${confirmationCode ? `\nCódigo de confirmación: ${confirmationCode}` : ''}`,
+            }}
+            fileName={`reserva-${confirmationCode || `${apartment}-${date}`}`}
+          />
           <Link href={`/manage?apartment=${apartment}`}>
             <button
               className="w-full rounded-xl font-semibold transition-all"

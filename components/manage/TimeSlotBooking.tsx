@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Clock, CheckCircle, XCircle, Edit2 } from 'lucide-react';
+import { AddToCalendarButton } from '@/components/ui/AddToCalendarButton';
 import { formatTimeSlotForDisplay } from '@/lib/utils/dateTime';
 import type { Booking } from '@/lib/utils/bookingHelpers';
 import { EditBookingModal } from './EditBookingModal';
@@ -56,7 +57,7 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
 
   return (
     <div className="p-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         {/* Left side: Icon and Time info */}
         <div className="flex items-start gap-3 flex-1">
           <div 
@@ -119,39 +120,52 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
         </div>
 
         {/* Right side: Action Buttons stacked vertically */}
-        {isActive && !showCancelConfirm && (
-          <div className="flex flex-col gap-2 flex-shrink-0">
-            {isEditable && (
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center justify-center gap-1.5"
-              style={{
-                backgroundColor: '#DBEAFE',
-                color: '#1E40AF',
-                fontSize: '13px',
-                border: '1px solid #93C5FD',
-                minWidth: '100px',
+        {isCancellable && !showCancelConfirm && (
+          <div className="w-full sm:w-auto sm:min-w-[182px] flex flex-col gap-2 flex-shrink-0">
+            <AddToCalendarButton
+              compact
+              event={{
+                uid: booking.confirmationCode,
+                title: 'Reserva de turno de carga',
+                startTime: new Date(booking.startTime),
+                endTime: new Date(booking.endTime),
+                description: `Reserva de ${booking.fullName} en el apartamento ${booking.apartmentNumber}${booking.vehiclePlate ? `\nPlaca: ${booking.vehiclePlate}` : ''}\nCódigo de confirmación: ${booking.confirmationCode}`,
               }}
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-              Editar
-            </button>
-            )}
-            {isCancellable && (
-            <button
-              onClick={() => setShowCancelConfirm(true)}
-              className="px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center justify-center gap-1.5"
-              style={{
-                backgroundColor: '#FEE2E2',
-                color: '#991B1B',
-                fontSize: '13px',
-                border: '1px solid #FCA5A5',
-                minWidth: '100px',
-              }}
-            >
-              Cancelar
-            </button>
-            )}
+              fileName={`reserva-${booking.confirmationCode}`}
+            />
+            <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+              {isEditable && (
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="w-full px-3 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center justify-center gap-1.5"
+                  style={{
+                    backgroundColor: '#DBEAFE',
+                    color: '#1E40AF',
+                    fontSize: '13px',
+                    border: '1px solid #93C5FD',
+                    minHeight: '40px',
+                  }}
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                  Editar
+                </button>
+              )}
+              {isCancellable && (
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="w-full px-3 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center justify-center gap-1.5"
+                  style={{
+                    backgroundColor: '#FEE2E2',
+                    color: '#991B1B',
+                    fontSize: '13px',
+                    border: '1px solid #FCA5A5',
+                    minHeight: '40px',
+                  }}
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
