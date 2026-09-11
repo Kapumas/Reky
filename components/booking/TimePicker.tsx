@@ -13,6 +13,30 @@ interface TimePickerProps {
   error?: string;
 }
 
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function timeSlotsOverlap(candidateSlot: string, bookedSlot: string): boolean {
+  const [candidateStart, candidateEnd] = candidateSlot.split('-');
+  const [bookedStart, bookedEnd] = bookedSlot.split('-');
+  const candidateStartMinutes = timeToMinutes(candidateStart);
+  const candidateEndMinutes = timeToMinutes(candidateEnd);
+  const bookedStartMinutes = timeToMinutes(bookedStart);
+  let bookedEndMinutes = timeToMinutes(bookedEnd);
+
+  if (bookedEndMinutes <= bookedStartMinutes) {
+    bookedEndMinutes += 24 * 60;
+  }
+
+  const overlaps = (start: number, end: number) =>
+    start < bookedEndMinutes && end > bookedStartMinutes;
+
+  return overlaps(candidateStartMinutes, candidateEndMinutes)
+    || overlaps(candidateStartMinutes + 24 * 60, candidateEndMinutes + 24 * 60);
+}
+
 export function TimePicker({
   selectedDate,
   selectedSlot,
@@ -79,7 +103,7 @@ export function TimePicker({
                 }
               `}
             >
-              Bloques de 2 horas
+              Bloques de 2 horas (cada 30 min)
             </button>
             <button
               type="button"
@@ -101,7 +125,7 @@ export function TimePicker({
           {!useCustomTime && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {TIME_SLOTS.map((slot) => {
-                const isBooked = bookedSlots.includes(slot);
+                const isBooked = bookedSlots.some((bookedSlot) => timeSlotsOverlap(slot, bookedSlot));
                 const isPast = date ? isTimeSlotPast(date, slot) : false;
                 const isDisabled = isBooked || isPast;
                 const isSelected = selectedSlot === slot;
@@ -160,6 +184,7 @@ export function TimePicker({
                     onChange={handleStartTimeChange}
                     min="06:00"
                     max="22:00"
+                    step="1800"
                     className="w-full px-4 py-3 rounded-lg border-2 border-greige-300 focus:border-sage focus:ring-2 focus:ring-sage focus:ring-opacity-20 transition-all"
                   />
                 </div>
@@ -173,12 +198,13 @@ export function TimePicker({
                     onChange={handleEndTimeChange}
                     min="06:00"
                     max="22:00"
+                    step="1800"
                     className="w-full px-4 py-3 rounded-lg border-2 border-greige-300 focus:border-sage focus:ring-2 focus:ring-sage focus:ring-opacity-20 transition-all"
                   />
                 </div>
               </div>
               <p className="text-xs text-greige-600 dark:text-greige-400">
-                El horario debe estar entre 6:00 AM y 10:00 PM
+                El horario debe estar entre 6:00 AM y 10:00 PM, en intervalos de 30 minutos
               </p>
             </div>
           )}

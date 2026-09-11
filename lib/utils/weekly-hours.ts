@@ -20,7 +20,7 @@ export function getWeeklyHoursLimit(): number {
   const rawValue = process.env.WEEKLY_HOURS_LIMIT;
   const parsed = Number(rawValue);
 
-  if (!rawValue || Number.isNaN(parsed) || parsed <= 0) {
+  if (!rawValue || !Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed * 2)) {
     return DEFAULT_WEEKLY_HOURS_LIMIT;
   }
 

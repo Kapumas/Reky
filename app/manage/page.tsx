@@ -6,6 +6,7 @@ import { DayBookingsGroup } from '@/components/manage/DayBookingsGroup';
 import { SessionGuard } from '@/components/auth/SessionGuard';
 import { Search, Loader2, ArrowLeft } from 'lucide-react';
 import { groupBookingsByDate, type Booking } from '@/lib/utils/bookingHelpers';
+import { formatDateForInput, getTodayString } from '@/lib/utils/dateTime';
 import { useUserSession } from '@/hooks/useUserSession';
 
 export const dynamic = 'force-dynamic';
@@ -85,13 +86,13 @@ function ManagePageContent() {
   // Group bookings by date
   const groupedBookings = useMemo(() => groupBookingsByDate(bookings), [bookings]);
   
-  // Separate future, past, and cancelled bookings
-  const now = new Date();
+  // Separate current/future, past, and cancelled bookings
+  const today = getTodayString();
   const activeGroups = groupedBookings.filter(g => g.activeCount > 0);
   const futureGroups = activeGroups
     .map(group => {
       const futureBookings = group.bookings.filter(
-        booking => booking.status === 'active' && new Date(booking.startTime) > now
+        booking => booking.status === 'active' && formatDateForInput(new Date(booking.bookingDate)) >= today
       );
       return futureBookings.length > 0
         ? { ...group, bookings: futureBookings, activeCount: futureBookings.length, cancelledCount: 0 }
@@ -101,7 +102,7 @@ function ManagePageContent() {
   const pastGroups = activeGroups
     .map(group => {
       const pastBookings = group.bookings.filter(
-        booking => booking.status === 'active' && new Date(booking.startTime) <= now
+        booking => booking.status === 'active' && formatDateForInput(new Date(booking.bookingDate)) < today
       );
       return pastBookings.length > 0
         ? { ...group, bookings: pastBookings, activeCount: pastBookings.length, cancelledCount: 0 }
@@ -110,8 +111,8 @@ function ManagePageContent() {
     .filter((group): group is NonNullable<typeof group> => group !== null);
   const cancelledGroups = groupedBookings.filter(g => g.activeCount === 0 && g.cancelledCount > 0);
   
-  const totalFuture = bookings.filter(b => b.status === 'active' && new Date(b.startTime) > now).length;
-  const totalPast = bookings.filter(b => b.status === 'active' && new Date(b.startTime) <= now).length;
+  const totalFuture = bookings.filter(b => b.status === 'active' && formatDateForInput(new Date(b.bookingDate)) >= today).length;
+  const totalPast = bookings.filter(b => b.status === 'active' && formatDateForInput(new Date(b.bookingDate)) < today).length;
   const totalCancelled = bookings.filter(b => b.status === 'cancelled').length;
 
   return (

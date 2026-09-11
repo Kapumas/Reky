@@ -142,6 +142,7 @@ Configure the weekly quota per apartment with:
 WEEKLY_HOURS_LIMIT=10
 ```
 
+- Admite valores en incrementos de 0.5 horas (por ejemplo, `8.5`)
 - Applied on booking creation and booking edits
 - Cancelled bookings do not consume hours
 - Hours reset every Monday at 00:00 in Bogotá timezone

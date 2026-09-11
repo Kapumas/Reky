@@ -1,5 +1,31 @@
 import { z } from 'zod';
 
+export const bookingTimeSchema = z
+  .string()
+  .regex(/^(?:[01]\d|2[0-3]):(?:00|30)$/, 'La hora debe usar intervalos de 30 minutos');
+
+function getTimeInMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+export function getBookingDurationMinutes(startTime: string, endTime: string): number {
+  const startMinutes = getTimeInMinutes(startTime);
+  const endMinutes = getTimeInMinutes(endTime);
+  const duration = endMinutes - startMinutes;
+
+  return duration < 0 ? duration + 24 * 60 : duration;
+}
+
+export function isOvernightBooking(startTime: string, endTime: string): boolean {
+  return getTimeInMinutes(endTime) < getTimeInMinutes(startTime);
+}
+
+export function isValidBookingTimeRange(startTime: string, endTime: string): boolean {
+  const durationMinutes = getBookingDurationMinutes(startTime, endTime);
+  return durationMinutes >= 30 && durationMinutes <= 24 * 60;
+}
+
 export const bookingFormSchema = z.object({
   apartmentNumber: z
     .string()
@@ -23,32 +49,10 @@ export const bookingFormSchema = z.object({
     .string()
     .min(1, 'La fecha es requerida')
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido'),
-  startTime: z
-    .string()
-    .min(1, 'La hora de inicio es requerida')
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
-  endTime: z
-    .string()
-    .min(1, 'La hora de fin es requerida')
-    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
-}).refine((data) => {
-  const start = data.startTime.split(':').map(Number);
-  const end = data.endTime.split(':').map(Number);
-  const startHour = start[0];
-  const endHour = end[0];
-  
-  // Calculate duration in hours (handle cross-day bookings)
-  let duration;
-  if (endHour >= startHour) {
-    duration = endHour - startHour;
-  } else {
-    // Crosses midnight
-    duration = (24 - startHour) + endHour;
-  }
-  
-  return duration > 0 && duration <= 24;
-}, {
-  message: 'La duración debe ser entre 1 y 24 horas',
+  startTime: bookingTimeSchema.min(1, 'La hora de inicio es requerida'),
+  endTime: bookingTimeSchema.min(1, 'La hora de fin es requerida'),
+}).refine((data) => isValidBookingTimeRange(data.startTime, data.endTime), {
+  message: 'La duración debe ser entre 30 minutos y 24 horas',
   path: ['endTime'],
 });
 

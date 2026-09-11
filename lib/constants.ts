@@ -1,5 +1,6 @@
 export const CHARGING_CONSTANTS = {
   SLOT_DURATION_HOURS: 2,
+  SLOT_INTERVAL_MINUTES: 30,
   BUSINESS_HOURS_START: 6,
   BUSINESS_HOURS_END: 22,
   MAX_DAYS_ADVANCE: 30,
@@ -10,12 +11,19 @@ export const APP_NAME = 'Booky';
 
 export function generateTimeSlots(): string[] {
   const slots: string[] = [];
-  const { BUSINESS_HOURS_START, BUSINESS_HOURS_END, SLOT_DURATION_HOURS } = CHARGING_CONSTANTS;
+  const { BUSINESS_HOURS_START, BUSINESS_HOURS_END, SLOT_DURATION_HOURS, SLOT_INTERVAL_MINUTES } = CHARGING_CONSTANTS;
+  const businessStartMinutes = BUSINESS_HOURS_START * 60;
+  const businessEndMinutes = BUSINESS_HOURS_END * 60;
+  const slotDurationMinutes = SLOT_DURATION_HOURS * 60;
 
-  for (let hour = BUSINESS_HOURS_START; hour < BUSINESS_HOURS_END; hour += SLOT_DURATION_HOURS) {
-    const startTime = `${hour.toString().padStart(2, '0')}:00`;
-    const endHour = hour + SLOT_DURATION_HOURS;
-    const endTime = `${endHour.toString().padStart(2, '0')}:00`;
+  for (
+    let startMinutes = businessStartMinutes;
+    startMinutes + slotDurationMinutes <= businessEndMinutes;
+    startMinutes += SLOT_INTERVAL_MINUTES
+  ) {
+    const endMinutes = startMinutes + slotDurationMinutes;
+    const startTime = `${Math.floor(startMinutes / 60).toString().padStart(2, '0')}:${(startMinutes % 60).toString().padStart(2, '0')}`;
+    const endTime = `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
     slots.push(`${startTime}-${endTime}`);
   }
 

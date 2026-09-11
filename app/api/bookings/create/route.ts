@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createBooking, upsertUser } from '@/lib/firebase/firestore-admin';
-import { bookingFormSchema } from '@/lib/utils/validation';
+import { bookingFormSchema, isOvernightBooking } from '@/lib/utils/validation';
 import { parseDateInBogotaTimezone, createBogotaDateTime } from '@/lib/utils/dateTime';
 import { validateWeeklyHoursQuota } from '@/lib/services/weekly-booking-quota';
 
@@ -36,10 +36,10 @@ export async function POST(request: NextRequest) {
     
     const startTimeDate = createBogotaDateTime(date, startHour, startMinute);
     
-    // If end hour is less than start hour, the booking crosses midnight
+    // If the end time is earlier than the start time, the booking crosses midnight
     // so we need to use the next day for the end time
     let endDate = date;
-    if (endHour < startHour) {
+    if (isOvernightBooking(startTime, endTime)) {
       const [year, month, day] = date.split('-').map(Number);
       // Create date in UTC to avoid timezone issues
       const currentDate = new Date(Date.UTC(year, month - 1, day));

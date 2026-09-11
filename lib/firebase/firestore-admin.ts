@@ -2,7 +2,8 @@ import { adminDb } from './admin';
 import { User, UserInput } from '@/types/user';
 import { Booking, BookingInput, BookingResponse } from '@/types/booking';
 import { generateConfirmationCode } from '../utils/confirmationCode';
-import { parseTimeSlot } from '../utils/dateTime';
+import { BOGOTA_TIMEZONE, parseTimeSlot } from '../utils/dateTime';
+import { formatInTimeZone } from 'date-fns-tz';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const BOOKINGS_COLLECTION = 'bookings';
@@ -132,9 +133,10 @@ export async function updateBooking(
     throw new Error('No se puede editar una reserva cancelada');
   }
 
-  const bookingStartTime = booking.startTime.toDate();
-  if (bookingStartTime <= new Date()) {
-    throw new Error('No se pueden editar reservas pasadas o en curso');
+  const bookingDate = formatInTimeZone(booking.bookingDate.toDate(), BOGOTA_TIMEZONE, 'yyyy-MM-dd');
+  const today = formatInTimeZone(new Date(), BOGOTA_TIMEZONE, 'yyyy-MM-dd');
+  if (bookingDate < today) {
+    throw new Error('No se pueden editar reservas de días pasados');
   }
 
   // Check for conflicts if date/time is being updated

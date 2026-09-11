@@ -3,11 +3,15 @@ import { getBookingByCode, updateBooking } from '@/lib/firebase/firestore-admin'
 import { createBogotaDateTime } from '@/lib/utils/dateTime';
 import { validateWeeklyHoursQuota } from '@/lib/services/weekly-booking-quota';
 import { z } from 'zod';
+import { bookingTimeSchema, isOvernightBooking, isValidBookingTimeRange } from '@/lib/utils/validation';
 
 const updateBookingSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido'),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Formato de hora inválido'),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Formato de hora inválido'),
+  startTime: bookingTimeSchema,
+  endTime: bookingTimeSchema,
+}).refine((data) => isValidBookingTimeRange(data.startTime, data.endTime), {
+  message: 'La duración debe ser entre 30 minutos y 24 horas',
+  path: ['endTime'],
 });
 
 function getClientIp(request: NextRequest): string {
@@ -52,7 +56,7 @@ export async function PUT(
     const startDateTime = createBogotaDateTime(date, startHour, startMinute);
 
     let endDate = date;
-    if (endHour < startHour) {
+    if (isOvernightBooking(startTime, endTime)) {
       const [year, month, day] = date.split('-').map(Number);
       const currentDate = new Date(Date.UTC(year, month - 1, day));
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);

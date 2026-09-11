@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Clock, CheckCircle, XCircle, Edit2 } from 'lucide-react';
 import { AddToCalendarButton } from '@/components/ui/AddToCalendarButton';
-import { formatTimeSlotForDisplay } from '@/lib/utils/dateTime';
+import { formatDateForInput, formatTimeSlotForDisplay, getTodayString } from '@/lib/utils/dateTime';
 import type { Booking } from '@/lib/utils/bookingHelpers';
 import { EditBookingModal } from './EditBookingModal';
 
@@ -21,7 +21,7 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
 
   const isActive = booking.status === 'active';
   const isCancellable = isActive && new Date(booking.startTime) > new Date();
-  const isEditable = isCancellable;
+  const isEditable = isActive && formatDateForInput(new Date(booking.bookingDate)) >= getTodayString();
 
   function handleEditSuccess() {
     setShowEditModal(false);
@@ -120,7 +120,7 @@ export function TimeSlotBooking({ booking, onCancel, onEdit }: TimeSlotBookingPr
         </div>
 
         {/* Right side: Action Buttons stacked vertically */}
-        {isCancellable && !showCancelConfirm && (
+        {(isEditable || isCancellable) && !showCancelConfirm && (
           <div className="w-full sm:w-auto sm:min-w-[182px] flex flex-col gap-2 flex-shrink-0">
             <AddToCalendarButton
               compact

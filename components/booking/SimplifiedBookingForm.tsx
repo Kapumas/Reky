@@ -65,49 +65,49 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoadingUser, setIsLoadingUser] = useState(false);
   const [userFound, setUserFound] = useState(false);
-  const [bookedHours, setBookedHours] = useState<string[]>([]);
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
   const [nearbyBookings, setNearbyBookings] = useState<DayBookingItem[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [selectedWeekRemainingHours, setSelectedWeekRemainingHours] = useState<number | null>(null);
   const [isLoadingWeekHours, setIsLoadingWeekHours] = useState(false);
   const [weeklyHoursLimit, setWeeklyHoursLimit] = useState(10);
 
-  // Generate all hours from 12:00 AM to 11:00 PM (0:00 to 23:00)
-  const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    return `${i.toString().padStart(2, '0')}:00`;
+  // Generate time slots from 12:00 AM to 11:30 PM (0:00 to 23:30)
+  const timeSlots = Array.from({ length: 48 }, (_, i) => {
+    const totalMinutes = i * 30;
+    return `${Math.floor(totalMinutes / 60).toString().padStart(2, '0')}:${(totalMinutes % 60).toString().padStart(2, '0')}`;
   });
 
   // Format time to AM/PM for display
   const formatTimeForDisplay = (time24: string): string => {
-    const [hourStr] = time24.split(':');
+    const [hourStr, minuteStr] = time24.split(':');
     const hour = parseInt(hourStr);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:00 ${ampm}`;
+    return `${displayHour}:${minuteStr} ${ampm}`;
   };
 
   // Calculate end time based on start time and duration (can go into next day)
   const calculateEndTime = (startTime: string, hours: number): string => {
     if (!startTime) return '';
     const [hourStr, minuteStr] = startTime.split(':');
-    const startHour = parseInt(hourStr);
-    const endHour = (startHour + hours) % 24; // Wrap around to next day if needed
-    
-    return `${endHour.toString().padStart(2, '0')}:${minuteStr}`;
+    const startMinutes = parseInt(hourStr) * 60 + parseInt(minuteStr);
+    const endMinutes = (startMinutes + hours * 60) % (24 * 60); // Wrap around to next day if needed
+    return `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
   };
 
   // Check if end time is on next day
   const isNextDay = (startTime: string, hours: number): boolean => {
     if (!startTime) return false;
-    const [hourStr] = startTime.split(':');
-    const startHour = parseInt(hourStr);
-    return (startHour + hours) >= 24;
+    const [hourStr, minuteStr] = startTime.split(':');
+    const startMinutes = parseInt(hourStr) * 60 + parseInt(minuteStr);
+    return startMinutes + hours * 60 >= 24 * 60;
   };
 
-  const horaFinal = hora && duracion ? calculateEndTime(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : '';
-  const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : false;
-  const maxDuracion = 24; // Always 24 hours max
-  const weeklyLimitQuickDuration = Math.max(1, Math.min(maxDuracion, Math.floor(weeklyHoursLimit)));
+  const horaFinal = hora && duracion ? calculateEndTime(hora, typeof duracion === 'number' ? duracion : Number(duracion)) : '';
+  const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : Number(duracion)) : false;
+  const maxDuracion = 24;
+  const weeklyLimitQuickDuration = Math.max(0.5, Math.min(maxDuracion, Math.floor(weeklyHoursLimit * 2) / 2));
 
   const overlappingBookings = useMemo<RangeConflictItem[]>(() => {
     if (!fecha || !hora || !duracion || nearbyBookings.length === 0) {
@@ -115,7 +115,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     }
 
     const selectedDurationHours = typeof duracion === 'number' ? duracion : Number(duracion);
-    if (!selectedDurationHours || selectedDurationHours < 1) {
+    if (!selectedDurationHours || selectedDurationHours < 0.5) {
       return [];
     }
 
@@ -228,7 +228,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
 
       setNearbyBookings([...previousBookings, ...selectedBookings, ...nextBookings]);
 
-      const occupiedHours = new Set<string>();
+      const occupiedTimeSlots = new Set<string>();
       const selectedDayStart = createBogotaDateTime(date, 0, 0);
       const selectedDayEnd = createBogotaDateTime(nextDateStr, 0, 0);
 
@@ -243,26 +243,28 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           return;
         }
 
-        for (let hour = 0; hour < 24; hour++) {
-          const slotStart = new Date(selectedDayStart.getTime() + hour * HOUR_IN_MS);
-          const slotEnd = new Date(slotStart.getTime() + HOUR_IN_MS);
+        for (let slotIndex = 0; slotIndex < 48; slotIndex++) {
+          const slotStart = new Date(selectedDayStart.getTime() + slotIndex * 30 * 60 * 1000);
+          const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
+          const totalMinutes = slotIndex * 30;
+          const slot = `${Math.floor(totalMinutes / 60).toString().padStart(2, '0')}:${(totalMinutes % 60).toString().padStart(2, '0')}`;
 
           if (overlapStart < slotEnd && overlapEnd > slotStart) {
-            occupiedHours.add(`${hour.toString().padStart(2, '0')}:00`);
+            occupiedTimeSlots.add(slot);
           }
         }
       });
 
-      const occupiedHoursList = Array.from(occupiedHours).sort();
-      setBookedHours(occupiedHoursList);
+      const occupiedTimeSlotsList = Array.from(occupiedTimeSlots).sort();
+      setBookedTimeSlots(occupiedTimeSlotsList);
 
-      if (hora && occupiedHours.has(hora)) {
+      if (hora && occupiedTimeSlots.has(hora)) {
         setHora('');
         setDuracion('');
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
-      setBookedHours([]);
+      setBookedTimeSlots([]);
       setNearbyBookings([]);
     } finally {
       setIsLoadingBookings(false);
@@ -320,7 +322,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
         setSelectedWeekRemainingHours(null);
       }
     } else {
-      setBookedHours([]);
+      setBookedTimeSlots([]);
       setNearbyBookings([]);
       setSelectedWeekRemainingHours(null);
     }
@@ -331,7 +333,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
     setIsSubmitting(true);
     setErrorMessage('');
 
-    // Validate duration is provided and doesn't exceed 8 hours
+    // Validate duration is provided and doesn't exceed 24 hours
     if (duracion === '' || !duracion) {
       setErrorMessage('Por favor ingresa la duración de la reserva');
       setIsSubmitting(false);
@@ -344,8 +346,8 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
       return;
     }
     
-    if (duracion < 1) {
-      setErrorMessage('La duración mínima es de 1 hora');
+    if (duracion < 0.5 || !Number.isInteger(duracion * 2)) {
+      setErrorMessage('La duración debe estar en intervalos de 30 minutos');
       setIsSubmitting(false);
       return;
     }
@@ -523,7 +525,7 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
           >
             <option value="">{isLoadingBookings ? 'Cargando...' : 'Hora'}</option>
             {timeSlots.map((slot) => {
-              const isBooked = bookedHours.includes(slot);
+              const isBooked = bookedTimeSlots.includes(slot);
               return (
                 <option key={slot} value={slot} disabled={isBooked}>
                   {formatTimeForDisplay(slot)}{isBooked ? ' (Reservada)' : ''}
@@ -561,6 +563,19 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
               Duración
             </label>
             <div className="grid grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => setDuracion(0.5)}
+                className="py-3 rounded-xl font-medium transition-all"
+                style={{
+                  backgroundColor: duracion === 0.5 ? '#2F9E44' : 'white',
+                  color: duracion === 0.5 ? 'white' : '#1F2933',
+                  border: `1px solid ${duracion === 0.5 ? '#2F9E44' : '#E5E7EB'}`,
+                  fontSize: '14px',
+                }}
+              >
+                +0.5h
+              </button>
               <button
                 type="button"
                 onClick={() => setDuracion(1)}
@@ -601,32 +616,36 @@ export function SimplifiedBookingForm({ preSelectedDate, onSuccess }: Simplified
                 +{weeklyLimitQuickDuration}h
               </button>
               <input
-                type="text"
-                inputMode="numeric"
+                type="number"
+                inputMode="decimal"
+                min="0.5"
+                max={maxDuracion}
+                step="0.5"
                 value={duracion}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  const value = e.target.value;
                   if (value === '') {
                     setDuracion('');
-                  } else {
-                    const numValue = parseInt(value);
-                    if (numValue <= maxDuracion) {
-                      setDuracion(numValue);
-                    }
+                    return;
+                  }
+
+                  const numValue = Number(value);
+                  if (Number.isFinite(numValue) && numValue <= maxDuracion) {
+                    setDuracion(numValue);
                   }
                 }}
-                className="py-3 px-4 rounded-xl text-center font-medium transition-colors"
+                className="col-span-4 py-3 px-4 rounded-xl text-center font-medium transition-colors"
                 style={{
                   border: '1px solid #E5E7EB',
                   fontSize: '16px',
                   backgroundColor: 'white',
                   color: '#1F2933'
                 }}
-                placeholder="Hrs"
+                placeholder="Otra duración en horas"
               />
             </div>
             <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
-              O ingresa el número de horas (1-{maxDuracion})
+              O ingresa el número de horas (0.5-{maxDuracion}, en intervalos de 0.5)
             </p>
           </div>
         )}

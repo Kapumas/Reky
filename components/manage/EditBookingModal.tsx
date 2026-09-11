@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import type { Booking } from '@/lib/utils/bookingHelpers';
-import { formatDateWithDayName, formatTimeToAMPM, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
+import { formatDateForInput, formatDateWithDayName, formatTimeToAMPM, getMaxDateString, getTodayString, parseDateInBogotaTimezone } from '@/lib/utils/dateTime';
+import { getBookingDurationMinutes } from '@/lib/utils/validation';
 
 interface EditBookingModalProps {
   isOpen: boolean;
@@ -18,56 +19,52 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
   const [duracion, setDuracion] = useState<number | ''>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [bookedHours, setBookedHours] = useState<string[]>([]);
+  const [bookedTimeSlots, setBookedTimeSlots] = useState<string[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
 
-  // Generate all hours from 12:00 AM to 11:00 PM (0:00 to 23:00)
-  const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    return `${i.toString().padStart(2, '0')}:00`;
+  // Generate time slots from 12:00 AM to 11:30 PM (0:00 to 23:30)
+  const timeSlots = Array.from({ length: 48 }, (_, i) => {
+    const totalMinutes = i * 30;
+    return `${Math.floor(totalMinutes / 60).toString().padStart(2, '0')}:${(totalMinutes % 60).toString().padStart(2, '0')}`;
   });
 
   // Format time to AM/PM for display
   const formatTimeForDisplay = (time24: string): string => {
-    const [hourStr] = time24.split(':');
+    const [hourStr, minuteStr] = time24.split(':');
     const hour = parseInt(hourStr);
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:00 ${ampm}`;
+    return `${displayHour}:${minuteStr} ${ampm}`;
   };
 
   // Calculate end time based on start time and duration (can go into next day)
   const calculateEndTime = (startTime: string, hours: number): string => {
     if (!startTime) return '';
     const [hourStr, minuteStr] = startTime.split(':');
-    const startHour = parseInt(hourStr);
-    const endHour = (startHour + hours) % 24;
-    return `${endHour.toString().padStart(2, '0')}:${minuteStr}`;
+    const startMinutes = parseInt(hourStr) * 60 + parseInt(minuteStr);
+    const endMinutes = (startMinutes + hours * 60) % (24 * 60);
+    return `${Math.floor(endMinutes / 60).toString().padStart(2, '0')}:${(endMinutes % 60).toString().padStart(2, '0')}`;
   };
 
   // Check if end time is on next day
   const isNextDay = (startTime: string, hours: number): boolean => {
     if (!startTime) return false;
-    const [hourStr] = startTime.split(':');
-    const startHour = parseInt(hourStr);
-    return (startHour + hours) >= 24;
+    const [hourStr, minuteStr] = startTime.split(':');
+    const startMinutes = parseInt(hourStr) * 60 + parseInt(minuteStr);
+    return startMinutes + hours * 60 >= 24 * 60;
   };
 
-  const horaFinal = hora && duracion ? calculateEndTime(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : '';
-  const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : parseInt(duracion)) : false;
+  const horaFinal = hora && duracion ? calculateEndTime(hora, typeof duracion === 'number' ? duracion : Number(duracion)) : '';
+  const crossesNextDay = hora && duracion ? isNextDay(hora, typeof duracion === 'number' ? duracion : Number(duracion)) : false;
   const maxDuracion = 24;
 
   useEffect(() => {
     if (isOpen && booking) {
       const bookingDate = new Date(booking.bookingDate);
-      setDate(bookingDate.toISOString().split('T')[0]);
+      setDate(formatDateForInput(bookingDate));
       const [start, end] = booking.timeSlot.split('-');
       setHora(start);
-      // Calculate duration from start and end times
-      const startHour = parseInt(start.split(':')[0]);
-      const endHour = parseInt(end.split(':')[0]);
-      let duration = endHour - startHour;
-      if (duration < 0) duration += 24; // Handle next day
-      setDuracion(duration);
+      setDuracion(getBookingDurationMinutes(start, end) / 60);
     }
   }, [isOpen, booking]);
 
@@ -79,82 +76,55 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
       
       // Also fetch bookings from previous day (to check for overnight bookings)
       const [year, month, day] = date.split('-').map(Number);
-      const selectedDate = new Date(year, month - 1, day);
-      const previousDate = new Date(year, month - 1, day - 1);
-      const previousDateStr = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, '0')}-${String(previousDate.getDate()).padStart(2, '0')}`;
+      const selectedDate = new Date(Date.UTC(year, month - 1, day));
+      const previousDate = new Date(selectedDate);
+      previousDate.setUTCDate(previousDate.getUTCDate() - 1);
+      const previousDateStr = `${previousDate.getUTCFullYear()}-${String(previousDate.getUTCMonth() + 1).padStart(2, '0')}-${String(previousDate.getUTCDate()).padStart(2, '0')}`;
       const previousResponse = await fetch(`/api/bookings/day/${previousDateStr}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        const occupiedHours: string[] = [];
-        
-        // Process bookings from selected date
-        data.bookings.forEach((b: any) => {
-          // Skip current booking being edited
-          if (b.confirmationCode === booking.confirmationCode) return;
-          
-          const startTime = new Date(b.startTime);
-          const endTime = new Date(b.endTime);
-          const startHour = startTime.getHours();
-          const endHour = endTime.getHours();
-          
-          const crossesMidnight = endHour < startHour || endTime <= startTime;
-          
-          if (crossesMidnight) {
-            for (let hour = startHour; hour < 24; hour++) {
-              const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-              if (!occupiedHours.includes(hourStr)) {
-                occupiedHours.push(hourStr);
-              }
-            }
-          } else {
-            for (let hour = startHour; hour < endHour || (hour === endHour && endTime.getMinutes() > 0); hour++) {
-              const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-              if (!occupiedHours.includes(hourStr)) {
-                occupiedHours.push(hourStr);
-              }
-            }
+      const data = response.ok ? await response.json() : { bookings: [] };
+      const previousData = previousResponse.ok ? await previousResponse.json() : { bookings: [] };
+      const bookings = [...(data.bookings ?? []), ...(previousData.bookings ?? [])] as Array<{
+        confirmationCode: string;
+        startTime: string;
+        endTime: string;
+      }>;
+      const occupiedTimeSlots = new Set<string>();
+      const selectedDayStart = parseDateInBogotaTimezone(date);
+      const selectedDayEnd = new Date(selectedDayStart.getTime() + 24 * 60 * 60 * 1000);
+
+      bookings.forEach((currentBooking) => {
+        // Skip current booking being edited
+        if (currentBooking.confirmationCode === booking.confirmationCode) return;
+
+        const bookingStart = new Date(currentBooking.startTime);
+        const bookingEnd = new Date(currentBooking.endTime);
+        const overlapStart = bookingStart > selectedDayStart ? bookingStart : selectedDayStart;
+        const overlapEnd = bookingEnd < selectedDayEnd ? bookingEnd : selectedDayEnd;
+
+        if (overlapStart >= overlapEnd) return;
+
+        for (let slotIndex = 0; slotIndex < 48; slotIndex++) {
+          const slotStart = new Date(selectedDayStart.getTime() + slotIndex * 30 * 60 * 1000);
+          const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
+          const totalMinutes = slotIndex * 30;
+          const slot = `${Math.floor(totalMinutes / 60).toString().padStart(2, '0')}:${(totalMinutes % 60).toString().padStart(2, '0')}`;
+
+          if (overlapStart < slotEnd && overlapEnd > slotStart) {
+            occupiedTimeSlots.add(slot);
           }
-        });
-        
-        // Process bookings from previous day that might extend to selected date
-        if (previousResponse.ok) {
-          const previousData = await previousResponse.json();
-          
-          previousData.bookings.forEach((b: any) => {
-            if (b.confirmationCode === booking.confirmationCode) return;
-            
-            const startTime = new Date(b.startTime);
-            const endTime = new Date(b.endTime);
-            const startHour = startTime.getHours();
-            const endHour = endTime.getHours();
-            
-            const crossesMidnight = endHour < startHour || endTime <= startTime;
-            
-            if (crossesMidnight) {
-              for (let hour = 0; hour < endHour || (hour === endHour && endTime.getMinutes() > 0); hour++) {
-                const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-                if (!occupiedHours.includes(hourStr)) {
-                  occupiedHours.push(hourStr);
-                }
-              }
-            }
-          });
         }
-        
-        setBookedHours(occupiedHours);
-        
-        // Clear selected hour if it's now booked
-        if (hora && occupiedHours.includes(hora)) {
-          setHora('');
-          setDuracion('');
-        }
-      } else {
-        setBookedHours([]);
+      });
+
+      setBookedTimeSlots(Array.from(occupiedTimeSlots).sort());
+
+      // Clear selected hour if it's now booked
+      if (hora && occupiedTimeSlots.has(hora)) {
+        setHora('');
+        setDuracion('');
       }
     } catch (err) {
       console.error('Error fetching availability:', err);
-      setBookedHours([]);
+      setBookedTimeSlots([]);
     } finally {
       setIsLoadingBookings(false);
     }
@@ -164,7 +134,7 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
     if (date) {
       fetchAvailability();
     } else {
-      setBookedHours([]);
+      setBookedTimeSlots([]);
     }
   }, [date, fetchAvailability]);
 
@@ -183,8 +153,8 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
       return;
     }
     
-    if (duracion < 1) {
-      setError('La duración mínima es de 1 hora');
+    if (duracion < 0.5 || !Number.isInteger(duracion * 2)) {
+      setError('La duración debe estar en intervalos de 30 minutos');
       return;
     }
 
@@ -218,10 +188,8 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
 
   if (!isOpen) return null;
 
-  const minDate = new Date();
-  minDate.setHours(0, 0, 0, 0);
-  const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + 30);
+  const minDate = getTodayString();
+  const maxDate = getMaxDateString();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -258,8 +226,8 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
                   setHora('');
                   setDuracion('');
                 }}
-                min={minDate.toISOString().split('T')[0]}
-                max={maxDate.toISOString().split('T')[0]}
+                min={minDate}
+                max={maxDate}
                 required
                 disabled={isLoading}
                 className="px-4 py-3 rounded-xl transition-colors"
@@ -287,7 +255,7 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
               >
                 <option value="">{isLoadingBookings ? 'Cargando...' : 'Hora'}</option>
                 {timeSlots.map((slot) => {
-                  const isBooked = bookedHours.includes(slot);
+                  const isBooked = bookedTimeSlots.includes(slot);
                   return (
                     <option key={slot} value={slot} disabled={isBooked}>
                       {formatTimeForDisplay(slot)}{isBooked ? ' (Reservada)' : ''}
@@ -307,6 +275,20 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
                   Duración
                 </label>
                 <div className="grid grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDuracion(0.5)}
+                    disabled={isLoading}
+                    className="py-3 rounded-xl font-medium transition-all"
+                    style={{
+                      backgroundColor: duracion === 0.5 ? '#2F9E44' : 'white',
+                      color: duracion === 0.5 ? 'white' : '#1F2933',
+                      border: `1px solid ${duracion === 0.5 ? '#2F9E44' : '#E5E7EB'}`,
+                      fontSize: '14px',
+                    }}
+                  >
+                    +0.5h
+                  </button>
                   <button
                     type="button"
                     onClick={() => setDuracion(1)}
@@ -350,33 +332,37 @@ export function EditBookingModal({ isOpen, onClose, booking, onSuccess }: EditBo
                     +12h
                   </button>
                   <input
-                    type="text"
-                    inputMode="numeric"
+                    type="number"
+                    inputMode="decimal"
+                    min="0.5"
+                    max={maxDuracion}
+                    step="0.5"
                     value={duracion}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '');
+                      const value = e.target.value;
                       if (value === '') {
                         setDuracion('');
-                      } else {
-                        const numValue = parseInt(value);
-                        if (numValue <= maxDuracion) {
-                          setDuracion(numValue);
-                        }
+                        return;
+                      }
+
+                      const numValue = Number(value);
+                      if (Number.isFinite(numValue) && numValue <= maxDuracion) {
+                        setDuracion(numValue);
                       }
                     }}
                     disabled={isLoading}
-                    className="py-3 px-4 rounded-xl text-center font-medium transition-colors"
+                    className="col-span-4 py-3 px-4 rounded-xl text-center font-medium transition-colors"
                     style={{
                       border: '1px solid #E5E7EB',
                       fontSize: '16px',
                       backgroundColor: 'white',
                       color: '#1F2933'
                     }}
-                    placeholder="Hrs"
+                    placeholder="Otra duración en horas"
                   />
                 </div>
                 <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
-                  O ingresa el número de horas (1-{maxDuracion})
+                  O ingresa el número de horas (0.5-{maxDuracion}, en intervalos de 0.5)
                 </p>
               </div>
             )}
