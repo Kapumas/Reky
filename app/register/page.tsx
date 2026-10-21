@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatApartmentInput } from '@/lib/utils/apartment-input';
 
-type VehicleTypeValue = '' | 'BEV' | 'PHEV';
+type VehicleTypeValue = '' | 'BEV' | 'PHEV' | 'MOTO';
 type DailyDistanceValue = '' | '0_20' | '20_40' | '40_60' | '60_100' | '100_plus';
 type ChargingFrequencyValue = '' | 'daily' | 'every_2_days' | 'two_to_three_times_week' | 'once_week';
-type ChargingTime220vValue = '' | '1_2' | '2_4' | '4_6' | '6_plus';
-type ChargingTime110vValue = '' | '2_4' | '4_6' | '6_8' | '8_plus';
+type ChargingTime220vValue = '' | '1_2' | '2_4' | '4_6' | '6_plus' | 'not_applicable';
+type ChargingTime110vValue = '' | '0_2' | '2_4' | '4_6' | '6_8' | '8_plus' | 'not_applicable';
 type PreferredTimeValue = '' | 'day' | 'night' | 'no_preference';
 
 interface RegistrationFormData {
@@ -213,14 +213,14 @@ export default function RegisterPage() {
                     type="text"
                     value={formData.vehiclePlate}
                     onChange={(e) => handleVehiclePlateChange(e.target.value)}
-                    placeholder="ABC-123"
+                    placeholder="ABC-123 o ABC-12D"
                     required
                     pattern="^[A-Za-z0-9]{3}-[A-Za-z0-9]{3}$"
                     className="w-full px-4 py-3 rounded-xl transition-colors"
                     style={fieldStyle}
                   />
                   <p className="mt-1" style={{ fontSize: '12px', color: '#6B7280' }}>
-                    Formato: ABC-123
+                    Carro: ABC-123 · Moto: ABC-12D
                   </p>
                 </div>
               </div>
@@ -241,6 +241,7 @@ export default function RegisterPage() {
                     <option value="">Selecciona una opción</option>
                     <option value="BEV">BEV (100% Eléctrico)</option>
                     <option value="PHEV">PHEV (Híbrido enchufable)</option>
+                    <option value="MOTO">Moto eléctrica</option>
                   </select>
                 </div>
 
@@ -250,7 +251,7 @@ export default function RegisterPage() {
                     type="text"
                     value={formData.vehicleBrandModel}
                     onChange={(e) => updateField('vehicleBrandModel', e.target.value)}
-                    placeholder="Ej: BYD Dolphin, Kia Niro PHEV"
+                    placeholder="Ej: BYD Dolphin, Kia Niro PHEV, Super Soco CPx"
                     required
                     className="w-full px-4 py-3 rounded-xl transition-colors"
                     style={fieldStyle}
@@ -290,7 +291,10 @@ export default function RegisterPage() {
             </section>
 
             <section className="rounded-xl p-5" style={{ border: '1px solid #E5E7EB', backgroundColor: '#FAFAFA' }}>
-              <h2 className="font-semibold mb-4" style={{ fontSize: '16px', color: '#1F2933' }}>3. Hábitos de carga</h2>
+              <h2 className="font-semibold mb-1" style={{ fontSize: '16px', color: '#1F2933' }}>3. Hábitos de carga</h2>
+              <p className="mb-4" style={{ fontSize: '13px', color: '#6B7280' }}>
+                Esta información es <strong>solo informativa</strong>: nos ayuda a conocer cómo se usan los cargadores, pero no afecta tus reservas, la disponibilidad de horarios ni ningún otro funcionamiento de la aplicación.
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-2 font-medium" style={labelStyle}>Distancia promedio diaria</label>
@@ -341,6 +345,7 @@ export default function RegisterPage() {
                     <option value="2_4">2-4 horas</option>
                     <option value="4_6">4-6 horas</option>
                     <option value="6_plus">6+ horas</option>
+                    <option value="not_applicable">No cargo en 220V</option>
                   </select>
                 </div>
 
@@ -354,10 +359,12 @@ export default function RegisterPage() {
                     style={fieldStyle}
                   >
                     <option value="">Selecciona una opción</option>
+                    <option value="0_2">Menos de 2 horas</option>
                     <option value="2_4">2-4 horas</option>
                     <option value="4_6">4-6 horas</option>
                     <option value="6_8">6-8 horas</option>
                     <option value="8_plus">8+ horas</option>
+                    <option value="not_applicable">No cargo en 110V</option>
                   </select>
                 </div>
 

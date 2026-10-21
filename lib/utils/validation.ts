@@ -100,7 +100,7 @@ export const registrationFormSchema = z.object({
     .max(7, 'La placa debe tener máximo 7 caracteres')
     .regex(/^[A-Z0-9]{3}-[A-Z0-9]{3}$/, 'La placa debe tener el formato ABC-123')
     .transform((val) => val.replace(/-/g, '')),
-  vehicleType: z.enum(['BEV', 'PHEV']),
+  vehicleType: z.enum(['BEV', 'PHEV', 'MOTO']),
   vehicleBrandModel: z
     .string()
     .trim()
@@ -110,8 +110,8 @@ export const registrationFormSchema = z.object({
   estimatedRangeKm: optionalPositiveNumber,
   dailyAverageDrivingDistance: z.enum(['0_20', '20_40', '40_60', '60_100', '100_plus']),
   chargingFrequency: z.enum(['daily', 'every_2_days', 'two_to_three_times_week', 'once_week']),
-  chargingTime220v: z.enum(['1_2', '2_4', '4_6', '6_plus']),
-  chargingTime110v: z.enum(['2_4', '4_6', '6_8', '8_plus']),
+  chargingTime220v: z.enum(['1_2', '2_4', '4_6', '6_plus', 'not_applicable']),
+  chargingTime110v: z.enum(['0_2', '2_4', '4_6', '6_8', '8_plus', 'not_applicable']),
   preferredChargingTime: z.enum(['day', 'night', 'no_preference']).optional(),
   agreedToFairUsage: z.literal(true),
 });
